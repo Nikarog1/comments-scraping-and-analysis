@@ -1,0 +1,42 @@
+name: scrap-and-check
+
+channels:
+  - conda-forge
+  - defaults
+  
+dependencies:
+  - python=3.10
+  - pip
+  - pandas
+  - numpy
+  - beatifulsoup4
+  - request
+  - lxml # faster parsing for BeautifulSoup
+
+
+
+  # # NLP core
+  # - nltk
+  # - spacy
+  # - gensim         # for topic modeling (LDA)
+  # - scikit-learn
+
+  # # Visualization
+  # - matplotlib
+  # - seaborn
+
+  # # VS Code & Jupyter
+  # - ipykernel
+  # - jupyterlab
+
+  # # For saving outputs
+  # - openpyxl       # Excel writer
+  # - xlrd           # Excel reader
+
+  # - pip:
+  #     - transformers
+  #     - textblob           # simple sentiment analysis
+  #     - tqdm               # progress bars
+  #     - wordcloud
+  #     - fastapi            # optional if you serve results via API
+  #     - uvicorn[standard]  # optional if using fastapi
