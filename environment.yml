@@ -40,3 +40,10 @@ dependencies:
   #     - wordcloud
   #     - fastapi            # optional if you serve results via API
   #     - uvicorn[standard]  # optional if using fastapi
+
+#  selenium / playwright -	If the site uses dynamic JS (e.g. YouTube comments)
+# langdetect -	Language detection
+# polyglot -	Multilingual NLP
+# scrapy -	More advanced scraping framework
+# sqlalchemy / sqlite -	Store large scraped datasets
+# dash / streamlit -	If you want a simple interactive dashboard
