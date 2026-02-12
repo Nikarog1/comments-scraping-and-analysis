@@ -4,11 +4,16 @@ from yt_comments.cli.main import main
 
 
 def test_cli_scrape_prints_video_id(capsys) -> None:
+    video_id = "dQw4w9WgXcQ" 
+    
     exit_code = main(["scrape", "dQw4w9WgXcQ"]) # simulation of yt-comments scrape dQw4w9WgXcQ  
     assert exit_code == 0 # check the exit_code
 
     captured = capsys.readouterr()
-    assert captured.out.strip() == "dQw4w9WgXcQ" # check that video id was printed
+    output = captured.out.strip()
+    assert "Saved" in output # check that the json was saved
+    assert video_id in output # check that video id was printed
+    assert ".jsonl" in output # check that the file was created
 
 
 def test_cli_help_exits_zero() -> None:
