@@ -1,6 +1,18 @@
+import os
+
 import argparse
 import logging
 import sys
+
+from datetime import datetime, timezone
+
+from yt_comments.ingestion.models import Comment
+from yt_comments.storage.comments_repository import JSONLCommentsRepository
+from yt_comments.ingestion.scrape_service import ScrapeResult, ScrapeCommentsService
+from yt_comments.ingestion.youtube_api_client import YouTubeApiClient
+from yt_comments.ingestion.youtube_client import StubYouTubeClient
+
+
 
 LOG_FORMAT = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 
@@ -48,7 +60,20 @@ def main(argv: list[str] | None = None) -> int:
     _configure_logging(args.verbose)
     
     if args.command == "scrape":
-        print(args.video)
+        video_id = args.video
+        
+        api_key = os.getenv("YOUTUBE_API_KEY")
+        if api_key: 
+             client = YouTubeApiClient(api_key=api_key) 
+        else: 
+             client = StubYouTubeClient()
+
+        repo = JSONLCommentsRepository()
+        service = ScrapeCommentsService(client=client, repo=repo)
+
+        result = service.run(video_id, overwrite=True)
+
+        print(f"Saved {result.saved_count} comments to: {result.path}")
         return 0
     
     return 2
