@@ -43,12 +43,39 @@ class YouTubeApiClient(YouTubeClient):
                 resp.raise_for_status() # for 4xx and 5xx it returns HTTPError
             except requests.HTTPError as e:
                 try:
-                    # Check if google returns some error message
+                    # Check if google sends an error message
                     payload = resp.json()
-                    message = payload.get("error", {}).get("message")
+                    err = payload.get("error", {})
+                    message = err.get("message") or "Unknown YouTube API error"
+                    errors = err.get("errors") or []
+                    reason = errors[0].get("reason") if errors else None
                 except Exception:
-                    # If not or it fails, set message to None
+                    # If not or it fails, set vars to None
+                    payload = None
                     message = None
+                    reason = None
+                    
+                # Convert different reasons to a readable format
+                if reason == "commentsDisabled":
+                    raise ValueError(
+                        f"Comments are disabled for video '{video_id}'."
+                    ) from e
+
+                if reason in {"videoNotFound", "notFound"}:
+                    raise ValueError(
+                        f"Video '{video_id}' was not found (check the video ID/URL)."
+                    ) from e
+
+                if reason in {"quotaExceeded", "dailyLimitExceeded"}:
+                    raise ValueError(
+                        "YouTube API quota exceeded for this project/API key. "
+                        "Try again later or use a different API key/project."
+                    ) from e
+
+                if reason in {"keyInvalid", "forbidden"}:
+                    raise ValueError(
+                        "YouTube API key is invalid or lacks permission for this request."
+                    ) from e
                     
                 if message:
                     raise ValueError(f"YouTube API error: {message}") from e
