@@ -90,6 +90,6 @@ class YouTubeApiClient(YouTubeClient):
                     is_reply=False,
                 ) # generator is created to not store everything in a list at a time. (to avoid RAM leak)
                 
-                page_token = data.get("nextPageToken")
-                if not page_token:
-                    break
+            page_token = data.get("nextPageToken")
+            if not page_token:
+                break
