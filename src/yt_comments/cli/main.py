@@ -7,10 +7,11 @@ import sys
 from datetime import datetime, timezone
 
 from yt_comments.ingestion.models import Comment
-from yt_comments.storage.comments_repository import JSONLCommentsRepository
 from yt_comments.ingestion.scrape_service import ScrapeResult, ScrapeCommentsService
+from yt_comments.ingestion.video_id_extractor import extract_video_id
 from yt_comments.ingestion.youtube_api_client import YouTubeApiClient
 from yt_comments.ingestion.youtube_client import StubYouTubeClient
+from yt_comments.storage.comments_repository import JSONLCommentsRepository
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -63,7 +64,7 @@ def main(argv: list[str] | None = None) -> int:
     _configure_logging(args.verbose)
     
     if args.command == "scrape":
-        video_id = args.video
+        video_id = extract_video_id(args.video)
         
         api_key = os.getenv("YOUTUBE_API_KEY")
         if api_key: 
