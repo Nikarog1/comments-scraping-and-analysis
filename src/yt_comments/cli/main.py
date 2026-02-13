@@ -75,7 +75,7 @@ def main(argv: list[str] | None = None) -> int:
         repo = JSONLCommentsRepository()
         service = ScrapeCommentsService(client=client, repo=repo)
 
-        result = service.run(video_id, overwrite=True)
+        result = service.run(video_id, overwrite=True, limit=args.limit)
 
         print(f"Saved {result.saved_count} comments to: {result.path}")
         return 0
