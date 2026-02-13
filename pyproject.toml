@@ -16,6 +16,7 @@ dependencies = [
     "google-api-python-client",
     "python-dotenv",
     "pydantic-settings",
+    "requests",
 ]
 
 [project.optional-dependencies]
