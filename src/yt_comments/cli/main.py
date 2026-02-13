@@ -12,6 +12,9 @@ from yt_comments.ingestion.scrape_service import ScrapeResult, ScrapeCommentsSer
 from yt_comments.ingestion.youtube_api_client import YouTubeApiClient
 from yt_comments.ingestion.youtube_client import StubYouTubeClient
 
+from dotenv import load_dotenv
+load_dotenv()
+
 
 
 LOG_FORMAT = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
@@ -65,9 +68,10 @@ def main(argv: list[str] | None = None) -> int:
         api_key = os.getenv("YOUTUBE_API_KEY")
         if api_key: 
              client = YouTubeApiClient(api_key=api_key) 
-        else: 
+        else:
+             logging.warning("API key not found. Using StubYouTubeClient.")
              client = StubYouTubeClient()
-
+        
         repo = JSONLCommentsRepository()
         service = ScrapeCommentsService(client=client, repo=repo)
 
