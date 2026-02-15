@@ -21,7 +21,7 @@ class ParquetSilverCommentsRepository:
         self.base_dir.mkdir(parents=True, exist_ok=True)
         
     def _dir_for_video(self, video_id: str) -> Path:
-        return self.base_dir / f"video_id = {video_id}"
+        return self.base_dir / f"video_id={video_id}"
     
     def _path_for_comments(self, video_id: str) -> Path:
         return self._dir_for_video(video_id) / f"comments.parquet"
