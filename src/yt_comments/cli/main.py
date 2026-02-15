@@ -1,17 +1,18 @@
 import os
-
 import argparse
 import logging
 import sys
 
-from datetime import datetime, timezone
-
-from yt_comments.ingestion.models import Comment
-from yt_comments.ingestion.scrape_service import ScrapeResult, ScrapeCommentsService
+from yt_comments.ingestion.scrape_service import ScrapeCommentsService
 from yt_comments.ingestion.video_id_extractor import extract_video_id
 from yt_comments.ingestion.youtube_api_client import YouTubeApiClient
 from yt_comments.ingestion.youtube_client import StubYouTubeClient
+
+from yt_comments.preprocessing.preprocess_service import PreprocessCommentsService
+from yt_comments.preprocessing.text_preprocessor import TextPreprocessor
+
 from yt_comments.storage.bronze_comments_repository import JSONLCommentsRepository
+from yt_comments.storage.silver_comments_repository import ParquetSilverCommentsRepository
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -31,6 +32,7 @@ def build_parser() -> argparse.ArgumentParser:
     
     subparser = parser.add_subparsers(dest="command", required=True)
     
+    # SCRAPE
     scrape = subparser.add_parser(
         "scrape", 
         help="scrape comments from a YouTube video"
@@ -44,6 +46,49 @@ def build_parser() -> argparse.ArgumentParser:
         type=int, 
         default=200, 
         help="maximum number of comments to fetch"
+    )
+    scrape.add_argument(
+        "--bronze-dir", 
+        default="data/bronze", 
+        help="bronze output directory"
+    )
+    scrape.add_argument(
+        "--overwrite",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="overwrite existing bronze file",
+    )
+    
+    # PREPROCESS
+    preprocess = subparser.add_parser(
+        "preprocess", 
+        help="build Silver parquet from Bronze JSONL"
+    )
+    preprocess.add_argument(
+        "video", 
+        help="YouTube video URL or 11-character video ID"
+    )
+    preprocess.add_argument(
+        "--bronze-dir", 
+        default="data/bronze", 
+        help="bronze input directory"
+        )
+    preprocess.add_argument(
+        "--silver-dir", 
+        default="data/silver", 
+        help="silver output directory"
+        )
+    preprocess.add_argument(
+        "--batch-size", 
+        type=int, 
+        default=5000, 
+        help="rows per parquet write batch"
+        )
+    preprocess.add_argument(
+        "--overwrite",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="overwrite existing silver file",
     )
     
     #2DO: add subparser for analysis etc. 
@@ -79,6 +124,23 @@ def main(argv: list[str] | None = None) -> int:
         result = service.run(video_id, overwrite=True, limit=args.limit)
 
         print(f"Saved {result.saved_count} comments to: {result.path}")
+        return 0
+    
+    if args.command == "preprocess":
+        video_id = extract_video_id(args.video)
+
+        bronze_repo = JSONLCommentsRepository(args.bronze_dir)
+        silver_repo = ParquetSilverCommentsRepository(args.silver_dir)
+        tp = TextPreprocessor()
+
+        service = PreprocessCommentsService(
+            bronze_repo=bronze_repo,
+            silver_repo=silver_repo,
+            text_preprocessor=tp,
+        )
+
+        out_path = service.run(video_id, overwrite=args.overwrite, batch_size=args.batch_size)
+        print(f"Saved Silver parquet to: {out_path}")
         return 0
     
     return 2
