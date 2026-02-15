@@ -54,7 +54,7 @@ class PreprocessCommentsService:
             rows = self._iter_silver_rows(bronze_comments, processed_at=processed_at),
             schema = self.SILVER_SCHEMA,
             overwrite = overwrite,
-            batch_size = 5000
+            batch_size = batch_size
         )
         return str(out_path)
         
@@ -87,5 +87,5 @@ class PreprocessCommentsService:
             "text_raw": raw,
             "text_clean": cleaned,
             "preprocess_version": self.PREPROCESS_VERSION,
-            "processed_at": datetime.now(timezone.utc),
+            "processed_at": processed_at,
         }
