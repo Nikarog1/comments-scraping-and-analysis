@@ -9,6 +9,7 @@ description = "YouTube comments scraping and classical NLP analysis"
 requires-python = ">=3.10"
 dependencies = [
     "pandas",
+    "pyarrow",
     "numpy",
     "scikit-learn",
     "nltk",
