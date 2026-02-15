@@ -13,10 +13,10 @@ from yt_comments.ingestion.models import Comment
 class JSONLCommentsRepository:
     """
     Stores one JSON object per line (JSONL), one file per video_id:
-      data/<video_id>.jsonl
+      data/bronze/<video_id>.jsonl
     """
     
-    def __init__(self, data_dir: Path | str = "data") -> None:
+    def __init__(self, data_dir: Path | str = "data/bronze") -> None:
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
         
