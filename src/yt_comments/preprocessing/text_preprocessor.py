@@ -6,7 +6,7 @@ import unicodedata
 
 
 # compiling just once outside of the main class
-_URL_RE = re.compile(r"http?://\+S|www\.\S+", flags=re.IGNORECASE) # if people send url in comms; found during testing some videos
+_URL_RE = re.compile(r"https?://\S+|www\.\S+", flags=re.IGNORECASE) # if people send url in comms; found during testing some videos
 _WS_RE = re.compile(r"\s+")
 
 class TextPreprocessor:
@@ -14,7 +14,7 @@ class TextPreprocessor:
     General text normalization for silver layer
     """
     
-    def __init__(self, *, replace_urls_with: str = "<URL") -> None:
+    def __init__(self, *, replace_urls_with: str = "<URL>") -> None:
         self._replace_urls_with = replace_urls_with
     
     def clean(self, text: str) -> str:
