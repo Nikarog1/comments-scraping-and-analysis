@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 import pytest
 
 from yt_comments.ingestion.models import Comment
-from yt_comments.storage.comments_repository import JSONLCommentsRepository
+from yt_comments.storage.bronze_comments_repository import JSONLCommentsRepository
 
 
 

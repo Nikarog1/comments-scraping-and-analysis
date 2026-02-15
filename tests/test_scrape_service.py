@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 from yt_comments.ingestion.scrape_service import ScrapeResult, ScrapeCommentsService
 from yt_comments.ingestion.youtube_client import StubYouTubeClient
-from yt_comments.storage.comments_repository import JSONLCommentsRepository
+from yt_comments.storage.bronze_comments_repository import JSONLCommentsRepository
 
 
 

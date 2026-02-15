@@ -11,7 +11,7 @@ from yt_comments.ingestion.scrape_service import ScrapeResult, ScrapeCommentsSer
 from yt_comments.ingestion.video_id_extractor import extract_video_id
 from yt_comments.ingestion.youtube_api_client import YouTubeApiClient
 from yt_comments.ingestion.youtube_client import StubYouTubeClient
-from yt_comments.storage.comments_repository import JSONLCommentsRepository
+from yt_comments.storage.bronze_comments_repository import JSONLCommentsRepository
 
 from dotenv import load_dotenv
 load_dotenv()
