@@ -12,6 +12,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from yt_comments.analysis.basic_stats.models import BasicStats, BasicStatsConfig, TopToken
+from yt_comments.nlp.stopwords import get_stopwords
 
 
 
@@ -81,12 +82,16 @@ class BasicStatsService:
         if config.lowercase:
             text = text.lower()
             
+        stopwords = get_stopwords(config.stopwords_lang) if config.drop_stopwords else frozenset()
+            
         for m in _TOKEN_RE.finditer(text): # finditer used since it returns a generator in comparison to findall
             tok = m.group(0) # returns the matched string
             
             if len(tok) < config.min_token_len:
                 continue
             if config.drop_numeric_tokens and tok.isdigit():
+                continue
+            if stopwords and tok in stopwords:
                 continue
             
             yield tok
