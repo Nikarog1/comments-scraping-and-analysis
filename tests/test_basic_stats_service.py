@@ -26,7 +26,7 @@ def test_basic_stats_service_computes_counts(tmp_path):
     pq.write_table(table, silver_path)
 
     svc = BasicStatsService(preprocess_version="v1")
-    config = BasicStatsConfig(top_n_tokens=10, min_token_len=2, drop_numeric_tokens=True)
+    config = BasicStatsConfig(top_n_tokens=10, min_token_len=2, drop_numeric_tokens=True, drop_stopwords=True, stopwords_lang="en")
 
     stats = svc.compute_for_video(
         video_id="vid1",
@@ -42,3 +42,4 @@ def test_basic_stats_service_computes_counts(tmp_path):
     assert stats.total_token_count == 5
     assert stats.unique_token_count == 2
     assert [(t.token, t.count) for t in stats.top_tokens] == [("world", 3), ("hello", 2)]
+    assert "the" not in [t.token for t in stats.top_tokens]
