@@ -5,11 +5,14 @@ import pytest
 from datetime import datetime
 from pathlib import Path
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 
 from yt_comments.cli.main import main
 from yt_comments.ingestion.models import Comment
 from yt_comments.storage.bronze_comments_repository import JSONLCommentsRepository
+from yt_comments.storage.gold_basic_stats_parquet_repository import ParquetBasicStatsRepository
+
 
 
 def test_cli_scrape_prints_video_id(capsys) -> None:
@@ -75,3 +78,54 @@ def test_cli_preprocess_creates_silver_parquet(tmp_path: Path) -> None:
     table = pq.ParquetFile(out_path).read()
     df = table.to_pandas()
     assert df.loc[0, "text_clean"] == "hello world! <url>"
+    
+
+def test_cli_stats_writes_gold_artifact(tmp_path, capsys):
+    data_root = tmp_path / "data"
+    video_id = "vid1"
+
+    silver_path = data_root / "silver" / video_id / "comments.parquet"
+    silver_path.parent.mkdir(parents=True, exist_ok=True)
+    pq.write_table(
+        pa.Table.from_pydict({"text_clean": ["the the hello", "world", None, "and you", "cool 123"]}),
+        silver_path,
+    )
+
+    rc = main(
+        [
+            "stats",
+            video_id,
+            "--data-root",
+            str(data_root),
+            "--top-n",
+            "5",
+            "--lang",
+            "en",
+        ]
+    )
+    print(data_root)
+    assert rc == 0
+    
+    expected = data_root / "gold" / "basic_stats" / video_id / "stats.parquet"
+    local_written = Path("data") / "gold" / "basic_stats" / video_id / "stats.parquet"
+
+    # Debug prints (pytest will show on failure)
+    print("expected:", expected)
+    print("exists expected:", expected.exists())
+    print("local:", local_written)
+    print("exists local:", local_written.exists())
+
+    # Also show what was actually created under tmp data_root
+    print("tmp tree:", [p.relative_to(data_root) for p in data_root.rglob("*")])
+
+    repo = ParquetBasicStatsRepository(data_root=data_root)
+    stats = repo.load(video_id)
+
+    assert stats.video_id == video_id
+    assert stats.row_count == 5
+    assert stats.empty_text_count == 1  # None
+    assert sorted((t.token, t.count) for t in stats.top_tokens) == [("cool", 1), ("hello", 1), ("world", 1)]
+
+    # sanity-check CLI printed something
+    out = capsys.readouterr().out
+    assert "video_id" in out
