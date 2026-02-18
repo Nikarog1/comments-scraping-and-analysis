@@ -15,6 +15,8 @@ class BasicStatsConfig:
     min_token_len: int = 2
     drop_numeric_tokens: bool = True
     lowercase: bool = True # added for explicity and reproducibility
+    drop_stopwords: bool = True
+    stopwords_lang: str = "en"
     
 @dataclass(frozen=True, slots=True)
 class TopToken:
