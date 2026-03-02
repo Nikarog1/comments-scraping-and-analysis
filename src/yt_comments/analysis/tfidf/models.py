@@ -39,7 +39,7 @@ class TfidfKeywords:
     min_df_abs: int
     max_df_abs: int
     config: TfidfConfig
-    keywords: tuple[TfidfKeyword] # corrected from Sequential; to have it immutable
+    keywords: tuple[TfidfKeyword, ...] # corrected from Sequential; to have it immutable
 
 
     
