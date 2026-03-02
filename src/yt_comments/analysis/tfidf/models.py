@@ -11,7 +11,7 @@ class TfidfConfig:
     drop_numeric_tokens: bool = True
     lowercase: bool = True
     drop_stopwords: bool = True
-    stopwords_lang: str = "en"
+    lang: str = "en"
     min_df: int | float = 2
     max_df: int | float = 20
     tf_mode: str = "norm"
