@@ -12,8 +12,8 @@ class TfidfConfig:
     lowercase: bool = True
     drop_stopwords: bool = True
     lang: str = "en"
-    min_df: int | float = 2
-    max_df: int | float = 20
+    min_df_raw: int | float = 2
+    max_df_raw: int | float = 20
     tf_mode: str = "norm"
     idf_mode: str = "smooth_log_plus1_ln"
     
