@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Sequence
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,9 +34,12 @@ class TfidfKeywords:
     config_hash: str
     row_count: int
     empty_text_count: int
-    doc_count_not_empty: int
+    doc_count_non_empty: int
     vocab_size: int
-    keywords: Sequence[TfidfKeyword]
+    min_df_abs: int
+    max_df_abs: int
+    config: TfidfConfig
+    keywords: tuple[TfidfKeyword] # corrected from Sequential; to have it immutable
 
 
     
