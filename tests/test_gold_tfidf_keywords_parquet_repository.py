@@ -23,8 +23,8 @@ def test_gold_tfidf_keywords_repo_round_trip(tmp_path: Path) -> None:
         lowercase=True,
         drop_stopwords=True,
         lang="en",
-        min_df_raw=2.0,
-        max_df_raw=0.9,  # example float threshold
+        min_df=2,
+        max_df=0.9,  # example float threshold
         tf_mode="norm",
         idf_mode="smooth_log_plus1_ln",
     )
@@ -39,6 +39,8 @@ def test_gold_tfidf_keywords_repo_round_trip(tmp_path: Path) -> None:
             empty_text_count=1,
             doc_count_non_empty=4,
             vocab_size=2,
+            min_df_raw="2",
+            max_df_raw="0.9",
             min_df_abs=2,
             max_df_abs=3,
             config=cfg,

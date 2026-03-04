@@ -12,8 +12,8 @@ class TfidfConfig:
     lowercase: bool = True
     drop_stopwords: bool = True
     lang: str = "en"
-    min_df_raw: int | float = 2 # token must appear in at least 2 comments
-    max_df_raw: int | float = 0.9 # drop tokens appearing in >90% comments 
+    min_df: int | float = 2 # token must appear in at least 2 comments
+    max_df: int | float = 0.9 # drop tokens appearing in >90% comments 
     tf_mode: str = "norm"
     idf_mode: str = "smooth_log_plus1_ln"
     
@@ -36,6 +36,8 @@ class TfidfKeywords:
     empty_text_count: int
     doc_count_non_empty: int
     vocab_size: int
+    min_df_raw: str
+    max_df_raw: str
     min_df_abs: int
     max_df_abs: int
     config: TfidfConfig # decided to add config info too for better dubugging and visibility 
