@@ -10,6 +10,8 @@ from datetime import datetime, timezone
 
 from yt_comments.analysis.basic_stats.models import BasicStatsConfig
 from yt_comments.analysis.basic_stats.service import BasicStatsService
+from yt_comments.analysis.tfidf.models import TfidfConfig
+from yt_comments.analysis.tfidf.service import TfidfService
 
 from yt_comments.ingestion.scrape_service import ScrapeCommentsService
 from yt_comments.ingestion.video_id_extractor import extract_video_id
@@ -21,6 +23,7 @@ from yt_comments.preprocessing.text_preprocessor import TextPreprocessor
 
 from yt_comments.storage.bronze_comments_repository import JSONLCommentsRepository
 from yt_comments.storage.gold_basic_stats_parquet_repository import ParquetBasicStatsRepository
+from yt_comments.storage.gold_tfidf_keywords_parquet_repository import ParquetTfidfKeywordsRepository
 from yt_comments.storage.silver_comments_repository import ParquetSilverCommentsRepository
 
 from dotenv import load_dotenv
@@ -153,6 +156,71 @@ def build_parser() -> argparse.ArgumentParser:
         help="Arrow batch size (default: 5000)"
     )
     
+    # TFIDF
+    tfidf = subparser.add_parser(
+        "tfidf", 
+        help="Compute Gold v2 TF-IDF from Silver"
+    )
+    tfidf.add_argument(
+        "video", 
+        help="YouTube video URL or 11-character video ID"
+    )
+    tfidf.add_argument(
+        "--data-root", 
+        default="data", 
+        help="Project data directory (default: data)"
+    )
+    tfidf.add_argument(
+        "--top-k", 
+        type=int, 
+        default=30, 
+        help="Top K keywords (default: 30)"
+    )
+    tfidf.add_argument(
+        "--min-token-len", 
+        type=int, 
+        default=2, 
+        help="Min token length (default: 2)"
+    )
+    tfidf.add_argument(
+        "--min-df", 
+        type=int, 
+        default=2, 
+        help="Min token df, i.e., in how many documents token must appear (default: 2)"
+    )
+    tfidf.add_argument(
+        "--max-df", 
+        type=float, 
+        default=0.9, 
+        help="Max token df fraction, i.e., drop tokens appearing in more documents in percents (default: 0.9)"
+    )
+    tfidf.add_argument(
+        "--keep-numeric", 
+        action="store_true", 
+        help="Do not drop numeric tokens"
+    )
+    tfidf.add_argument(
+        "--no-lowercase", 
+        action="store_true", 
+        help="Do not lowercase before tokenization"
+    )
+    tfidf.add_argument(
+        "--keep-stopwords", 
+        action="store_true", 
+        help="Do not drop stopwords"
+    )
+    tfidf.add_argument(
+        "--lang", 
+        default="en",
+        help="Stopwords language (default: en)"
+    )
+    tfidf.add_argument(
+        "--batch-size", 
+        type=int, 
+        default=5000, 
+        help="Arrow batch size (default: 5000)"
+    )
+    
     return parser
     
 def main(argv: list[str] | None = None) -> int:
@@ -238,6 +306,52 @@ def main(argv: list[str] | None = None) -> int:
             print("top_tokens: (none)")
         return 0
     
+    if args.command == "tfidf":
+        video_id = extract_video_id(args.video)
+        
+        data_root = Path(args.data_root)
+        silver_path = _silver_parquet_path(data_root, video_id)
+        if not silver_path.exists():
+            parser.error(f"Silver file not found: {silver_path}")
+            
+        svc = TfidfService(preprocess_version="v1")
+        cfg = TfidfConfig(
+            top_k=args.top_k,
+            min_token_len=args.min_token_len,
+            drop_numeric_tokens=not args.keep_numeric,
+            lowercase=not args.no_lowercase,
+            drop_stopwords=not args.keep_stopwords,
+            lang=args.lang,
+            min_df=args.min_df,
+            max_df=args.max_df   
+        )
+        
+        tfidf = svc.compute_for_video(
+            video_id=video_id,
+            silver_parquet_path=str(silver_path),
+            config=cfg,
+            created_at_utc=datetime.now(timezone.utc),
+            batch_size=args.batch_size  
+        )
+        
+        repo = ParquetTfidfKeywordsRepository(data_root=data_root)
+        repo.save(tfidf)
+        
+        print(f"video_id: {tfidf.video_id}")
+        print(f"rows: {tfidf.row_count} | empty_text: {tfidf.empty_text_count} | docs_used: {tfidf.doc_count_non_empty}")
+        print("top_keywords:")
+        
+        if not tfidf.keywords:
+            print(" (none)")
+        else:
+            for i, kw in enumerate(tfidf.keywords, start=1):
+                print(
+                    f" {i:>2}. {kw.token:<15} "
+                    f"score={kw.score:.3f} "
+                    f"df={kw.df}"
+                )
+        return 0
+        
     return 2
 
 
