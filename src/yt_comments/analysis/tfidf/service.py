@@ -178,7 +178,7 @@ class TfidfService:
             return int(math.floor(float(x) * N))
         
         min_abs = to_min_abs(min_df)
-        max_abs = to_min_abs(max_df)
+        max_abs = to_max_abs(max_df)
         
         if min_abs < 0:
             min_abs = 0
