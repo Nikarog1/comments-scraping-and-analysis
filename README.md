@@ -48,6 +48,7 @@ Each stage has a clearly defined responsibility:
 The Bronze layer stores **raw YouTube API responses** with minimal transformation.
 
 **Location**
+
 data/bronze/<video_id>/comments.jsonl
 
 **CLI**
@@ -73,6 +74,7 @@ yt_comments scrape <video_id>
 The Silver layer converts raw comments into **analysis-ready text**.
 
 **Output**
+
 data/silver/<video_id>/comments.parquet
 
 **CLI**
@@ -112,6 +114,7 @@ Characteristics:
 - configuration versioned
 
 **Each artifact is stored in its own directory:**
+
 data/gold/<analysis>/<video_id>
 
 Current Gold stages:
@@ -127,6 +130,7 @@ Computes corpus statistics such as:
 - most frequent tokens
 
 **Output**
+
 data/gold/basic_stats/<video_id>/stats.parquet
 
 **CLI**
@@ -139,12 +143,15 @@ yt-comments stats <video_id>
 Extracts **top keywords from a video's comment corpus** using TF-IDF.
 
 **Document unit**
+
 1 comment = 1 document
 
 **Corpus**
+
 All comments for a single video 
 
 **Output**
+
 data/gold/tfidf/<video_id>/keywords.parquet
 
 Each artifact includes:
@@ -165,21 +172,27 @@ yt_comments tfidf <video_id>
 TF-IDF is computed deterministically using the following definitions.
 
 **Document Frequency**
+
 df(t) = number of documents containing token t
 
 **Normalized Term Frequency**
+
 tf(t, d) = count(t, d) / document_length
 
 **Average TF**
+
 avg_tf(t) = (1 / N) * Σ tf(t, d)
 
 **Smoothed IDF (scikit-learn style)**
+
 idf(t) = ln((1 + N) / (1 + df(t))) + 1
 
 **Final score**
+
 score(t) = avg_tf(t) * idf(t)
 
 Where:
+
 N = number of non-empty documents
 
 
