@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "youtube-comments-analysis"
 version = "0.1.0"
 description = "YouTube comments scraping and classical NLP analysis"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "pandas",
     "pyarrow",
