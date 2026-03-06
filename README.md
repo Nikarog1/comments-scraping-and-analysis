@@ -212,16 +212,22 @@ All Gold artifacts are **self-describing and reproducible**.
 
 # Project Structure
 
-src/
-    yt_comments/
-        analysis/
-            basic_stats/
-            tfidf/
-        ingestion/
-        preprocessing/
-        storage/
-        cli/
-tests/
+## Project structure
+
+```
+comments-scraping-and-analysis/
+├── src/
+│   └── yt_comments/
+│       ├── analysis/
+│       │   ├── basic_stats/
+│       │   └── tfidf/
+│       ├── cli/
+│       ├── ingestion/
+│       ├── nlp/
+│       ├── preprocessing/
+│       └── storage/
+└── tests/
+```
 
 
 **Design rules**
