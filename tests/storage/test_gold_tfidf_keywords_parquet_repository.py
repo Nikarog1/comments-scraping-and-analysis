@@ -34,6 +34,7 @@ def test_gold_tfidf_keywords_repo_round_trip(tmp_path: Path) -> None:
             created_at_utc=created_at,
             silver_path=str(data_root / "silver" / video_id / "comments.parquet"),
             preprocess_version="v1",
+            artifact_version="v2",
             config_hash="testtesttesttest",
             row_count=5,
             empty_text_count=1,

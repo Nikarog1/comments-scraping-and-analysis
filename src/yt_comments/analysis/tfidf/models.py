@@ -32,6 +32,7 @@ class TfidfKeywords:
     created_at_utc: datetime
     silver_path: str
     preprocess_version: str
+    artifact_version: str
     config_hash: str
     row_count: int
     empty_text_count: int
