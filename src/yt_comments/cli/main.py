@@ -220,6 +220,24 @@ def build_parser() -> argparse.ArgumentParser:
         default=5000, 
         help="Arrow batch size (default: 5000)"
     )
+    tfidf.add_argument(
+        "--ngram-min", 
+        type=int, 
+        default=1, 
+        help="Min ngram to be extracted (default: 1)"
+    )
+    tfidf.add_argument(
+        "--ngram-max", 
+        type=int, 
+        default=1, 
+        help="Max ngram to be extracted (default: 1 - meaning extraction of unigrams only)"
+    )
+    tfidf.add_argument(
+        "--min-ngram-df", 
+        type=int, 
+        default=2, 
+        help="Min df of ngram, i.e., in how many documents ngram must appear (default: 2)"
+    )
     
     return parser
     
@@ -314,6 +332,13 @@ def main(argv: list[str] | None = None) -> int:
         if not silver_path.exists():
             parser.error(f"Silver file not found: {silver_path}")
             
+        if args.ngram_min < 1:
+            raise SystemExit("--ngram-min must be >= 1")
+        if args.ngram_max < args.ngram_min:
+            raise SystemExit("--ngram-max must be >= --ngram-min")
+        if args.min_ngram_df < 1:
+            raise SystemExit("--min-ngram-df must be >= 1")
+
         svc = TfidfService(preprocess_version="v1")
         cfg = TfidfConfig(
             top_k=args.top_k,
@@ -323,7 +348,9 @@ def main(argv: list[str] | None = None) -> int:
             drop_stopwords=not args.keep_stopwords,
             lang=args.lang,
             min_df=args.min_df,
-            max_df=args.max_df   
+            max_df=args.max_df,
+            ngram_range=(args.ngram_min, args.ngram_max),
+            min_ngram_df=args.min_ngram_df,  
         )
         
         tfidf = svc.compute_for_video(
