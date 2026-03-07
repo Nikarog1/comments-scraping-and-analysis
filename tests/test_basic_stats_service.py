@@ -16,7 +16,7 @@ def test_basic_stats_service_computes_counts(tmp_path):
         {
             "text_clean": [
                 "hello world",
-                "hello",
+                "amazing cat",
                 "",
                 None,
                 "world world 123",
@@ -40,6 +40,6 @@ def test_basic_stats_service_computes_counts(tmp_path):
     assert stats.empty_text_count == 2  # "" and None
 
     assert stats.total_token_count == 5
-    assert stats.unique_token_count == 2
-    assert [(t.token, t.count) for t in stats.top_tokens] == [("world", 3), ("hello", 2)]
+    assert stats.unique_token_count == 3
+    assert [(t.token, t.count) for t in stats.top_tokens] == [("world", 3), ("amazing", 1), ("cat", 1)]
     assert "the" not in [t.token for t in stats.top_tokens]

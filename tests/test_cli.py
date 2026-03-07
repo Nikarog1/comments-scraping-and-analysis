@@ -87,7 +87,7 @@ def test_cli_stats_writes_gold_artifact(tmp_path, capsys):
     silver_path = data_root / "silver" / video_id / "comments.parquet"
     silver_path.parent.mkdir(parents=True, exist_ok=True)
     pq.write_table(
-        pa.Table.from_pydict({"text_clean": ["the the hello", "world", None, "and you", "cool 123"]}),
+        pa.Table.from_pydict({"text_clean": ["the the cat", "world", None, "and you", "cool 123"]}),
         silver_path,
     )
 
@@ -124,7 +124,7 @@ def test_cli_stats_writes_gold_artifact(tmp_path, capsys):
     assert stats.video_id == video_id
     assert stats.row_count == 5
     assert stats.empty_text_count == 1  # None
-    assert sorted((t.token, t.count) for t in stats.top_tokens) == [("cool", 1), ("hello", 1), ("world", 1)]
+    assert sorted((t.token, t.count) for t in stats.top_tokens) == [("cat", 1), ("cool", 1), ("world", 1)]
 
     # sanity-check CLI printed something
     out = capsys.readouterr().out

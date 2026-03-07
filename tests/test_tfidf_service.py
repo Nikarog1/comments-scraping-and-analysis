@@ -32,7 +32,7 @@ def test_tfidf_service_computes_expected_keywords(tmp_path: Path) -> None:
         [
             "i love that cat",
             "this cat is amazing",
-            "amazing video love it"
+            "amazing winter love it"
         ]
     )
     
@@ -66,16 +66,16 @@ def test_tfidf_service_computes_expected_keywords(tmp_path: Path) -> None:
     # Expected tokens after stopwords removal:
     # C1: ["love", "cat"]
     # C2: ["cat", "amazing"]
-    # C3: ["amazing", "video", "love"]
+    # C3: ["amazing", "winter", "love"]
     
     got = {kw.token: kw for kw in result.keywords}
-    assert set(got) == {"love", "cat", "amazing", "video"}
+    assert set(got) == {"love", "cat", "amazing", "winter"}
     
     # df checks:
     assert got["cat"].df == 2
     assert got["love"].df == 2
     assert got["amazing"].df == 2
-    assert got["video"].df == 1
+    assert got["winter"].df == 1
     
     # idf checks:
     N = 3
@@ -85,23 +85,23 @@ def test_tfidf_service_computes_expected_keywords(tmp_path: Path) -> None:
     assert math.isclose(got["cat"].idf, idf_df_2, rel_tol=1e-9) # isclose used due to floating-point rounding
     assert math.isclose(got["love"].idf, idf_df_2, rel_tol=1e-9) 
     assert math.isclose(got["amazing"].idf, idf_df_2, rel_tol=1e-9)
-    assert math.isclose(got["video"].idf, idf_df_1, rel_tol=1e-9)
+    assert math.isclose(got["winter"].idf, idf_df_1, rel_tol=1e-9)
     
     # avg_tf checks:
     # cat: (1 / 2 + 1 / 2) / 3 = 1 / 3
     # love: (1 / 2 + 1 / 3) / 3 = 5 / 18
     # amazing: (1 / 2 + 1 / 3) / 3 = 5 / 18
-    # video: (1 / 3) / 3 = 1 / 9
+    # winter: (1 / 3) / 3 = 1 / 9
     assert math.isclose(got["cat"].avg_tf, 1 / 3, rel_tol=1e-9)
     assert math.isclose(got["love"].avg_tf, 5 / 18, rel_tol=1e-9)
     assert math.isclose(got["amazing"].avg_tf, 5 / 18, rel_tol=1e-9)
-    assert math.isclose(got["video"].avg_tf, 1 / 9, rel_tol=1e-9)
+    assert math.isclose(got["winter"].avg_tf, 1 / 9, rel_tol=1e-9)
     
     # ranking:
     # cat highest
     # amazing and love have equal score and df, but alphabetically amazing is higher (asc order)
     # video last
-    assert tuple(kw.token for kw in result.keywords) == ("cat", "amazing", "love", "video")
+    assert tuple(kw.token for kw in result.keywords) == ("cat", "amazing", "love", "winter")
     
     def test_tfidf_service_applies_min_df_filter(tmp_path: Path) -> None:
         video_id = "vid1"
@@ -111,7 +111,7 @@ def test_tfidf_service_computes_expected_keywords(tmp_path: Path) -> None:
             [
                 "i love that cat",
                 "this cat is amazing",
-                "amazing video love it"
+                "amazing winter love it"
             ]
         )
         
