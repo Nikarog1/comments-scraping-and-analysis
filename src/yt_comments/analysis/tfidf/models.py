@@ -17,6 +17,7 @@ class TfidfConfig:
     tf_mode: str = "norm"
     idf_mode: str = "smooth_log_plus1_ln"
     ngram_range: tuple[int, int] = (1, 1)
+    min_ngram_df: int = 2 # ensures to extract only repeating ngrams
     
 @dataclass(frozen=True, slots=True)    
 class TfidfKeyword:

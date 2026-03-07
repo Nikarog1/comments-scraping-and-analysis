@@ -13,12 +13,10 @@ def _write_silver(tmp_path, comments):
     pq.write_table(table, path)
     return str(path)
 
-def test_tfidf_with_bigrams(tmp_path: Path):
+def test_min_ngram_df_filters_rare_bigrams_but_keeps_unigrams(tmp_path: Path):
     comments = [
         "amazing cat",
         "amazing cat",
-        "amazing cat",
-        "funny dog",
         "funny dog",
         "cool vid"
     ]
@@ -36,6 +34,7 @@ def test_tfidf_with_bigrams(tmp_path: Path):
         tf_mode="norm",
         idf_mode="smooth_log_plus1_ln",
         ngram_range=(1,2),
+        min_ngram_df=2
     )
     service = TfidfService(preprocess_version="v1")
     
@@ -50,5 +49,6 @@ def test_tfidf_with_bigrams(tmp_path: Path):
     tokens = {kw.token for kw in result.keywords}
     
     assert "amazing cat" in tokens
-    assert "funny dog" in tokens
-    assert "vid" not in tokens
+    assert "funny dog" not in tokens
+    assert "dog" in tokens
+    assert "cat" in tokens

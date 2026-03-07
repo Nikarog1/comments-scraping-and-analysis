@@ -65,12 +65,14 @@ class TfidfService:
             keywords: tuple[TfidfKeyword, ...] = tuple()
             vocab_size = 0
         else:
-            kept_tokens = [
-                tok
-                for tok, df in acc.df.items()
-                if df >= min_df_abs and df <= max_df_abs
-            ]
-            
+            kept_tokens = []
+            for tok, df in acc.df.items():
+                if df < min_df_abs and df > max_df_abs:
+                    continue
+                if self._ngram_size(tok) >= 2 and df < config.min_ngram_df:
+                    continue
+                kept_tokens.append(tok)
+ 
             vocab_size = len(kept_tokens)
             
             scored: list[TfidfKeyword] = []
@@ -225,5 +227,9 @@ class TfidfService:
             pass
         
         return (min_abs, max_abs)
+    
+    @staticmethod
+    def _ngram_size(feature: str) -> int:
+        return feature.count(" ") + 1
             
         
