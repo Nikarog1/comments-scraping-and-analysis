@@ -49,10 +49,10 @@ class TfidfService:
             arr = batch.column(0)
             
             for comm in arr.to_pylist():
-                tokens = []
+                features: list[str] = []
                 if comm is not None and str(comm).strip() != "":
-                    tokens = list(self._tokenize(str(comm), config))
-                acc.add_document(tokens)
+                    features = self._build_document_features(str(comm), config)
+                acc.add_document(features)
                 
         N = acc.doc_count_non_empty
         min_df_abs, max_df_abs = self._resolve_df_thresholds(
@@ -99,6 +99,7 @@ class TfidfService:
             silver_path=silver_parquet_path,
             created_at_utc=created_at_utc,
             preprocess_version=self._preprocess_version,
+            artifact_version="tfidf_v2_1",
             config_hash=self._hash_config(config),
             row_count=int(acc.row_count),
             empty_text_count=int(acc.empty_text_count),
@@ -111,7 +112,42 @@ class TfidfService:
             config=config,
             keywords=keywords,
         )
-    
+
+    def _build_document_features(self, text: str, config: TfidfConfig) -> list[str]:
+        """
+        Build the per-document feature list consumed by the accumulator.
+
+        Frozen v2.1 rule:
+        - tokenize first
+        - drop stopwords first
+        - then generate n-grams from the filtered token stream
+
+        This keeps vocabulary growth under better control and preserves
+        deterministic streaming behavior.
+        """
+        tokens = list(self._tokenize(text, config))
+        return list(self._generate_ngrams(tokens, config.ngram_range))
+
+    @staticmethod
+    def _generate_ngrams(tokens: list[str], ngram_range: tuple[int, int]) -> Iterable[str]: 
+        min_n, max_n = ngram_range
+
+        if min_n < 1:
+            raise ValueError("ngram_range min must be >= 1")
+        if max_n < min_n:
+            raise ValueError("ngram_range max must be >= 1")
+        
+        token_count = len(tokens)
+        if token_count == 0:
+            pass
+        
+        for n in range(min_n, max_n + 1): # crucial part; (1, 1) - produces unigrams, (1, 2) - both uni- and bigrams, (2, 2) - bigram only
+            if token_count < n:
+                continue
+            
+            for i in range(token_count - n + 1):
+                yield " ".join(tokens[i : i + n]) # dequeue can be used here, but slice was kept for simplification
+
     @staticmethod
     def _tokenize(text: str, config: TfidfConfig) -> Iterable[str]:
         if config.lowercase:
