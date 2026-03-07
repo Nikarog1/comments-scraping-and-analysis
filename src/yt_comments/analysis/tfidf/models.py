@@ -16,6 +16,7 @@ class TfidfConfig:
     max_df: int | float = 0.9 # drop tokens appearing in >90% comments 
     tf_mode: str = "norm"
     idf_mode: str = "smooth_log_plus1_ln"
+    ngram_range: tuple[int, int] = (1, 1)
     
 @dataclass(frozen=True, slots=True)    
 class TfidfKeyword:
