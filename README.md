@@ -258,11 +258,11 @@ The project prioritizes:
 Potentional next stages:
 
 - cross-video TF-IDF corpus (Gold v3)
-- stopwords enhancments & comment-domain stopwords 
-- add keyword blacklist
+- stopwords enhancments & comment-domain stopwords -> DONE, should be revised after testing with different videos from different fields
+- add keyword blacklist -> DONE
 - additional languages support
 - topic clustering
-- bigrams
+- bigrams -> DONE
 - semantic embeddings 
 - channel-level analytics 
 - incremental corpus statistics 
