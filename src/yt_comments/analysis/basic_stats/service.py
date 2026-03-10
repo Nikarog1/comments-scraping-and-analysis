@@ -13,13 +13,14 @@ import pyarrow.parquet as pq
 
 from yt_comments.analysis.basic_stats.models import BasicStats, BasicStatsConfig, TopToken
 from yt_comments.nlp.stopwords import get_stopwords
+from yt_comments.preprocessing.contract import PREPROCESS_VERSION
 
 
 
 _TOKEN_RE = re.compile(r"[a-zA-Z0-9_']+")
 
 class BasicStatsService:
-    def __init__(self, *, preprocess_version: str = "v1") -> None:
+    def __init__(self, *, preprocess_version: str = PREPROCESS_VERSION) -> None:
         self._preprocess_version = preprocess_version
         
     def compute_for_video(
