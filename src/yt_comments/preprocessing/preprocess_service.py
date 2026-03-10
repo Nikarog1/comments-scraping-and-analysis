@@ -59,8 +59,6 @@ class PreprocessCommentsService:
         
             
     def _iter_silver_rows(self, comments: Iterable[Comment], *, processed_at: datetime) -> Iterable[dict]:
-        rows: list[dict] = []
-        
         for c in comments:
             yield self._comment_to_silver_row(c, processed_at=processed_at)
     
