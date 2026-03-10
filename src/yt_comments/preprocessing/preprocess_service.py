@@ -6,6 +6,7 @@ from typing import Iterable
 import pyarrow as pa
 
 from yt_comments.ingestion.models import Comment
+from yt_comments.preprocessing.contract import PREPROCESS_VERSION
 from yt_comments.preprocessing.text_preprocessor import TextPreprocessor
 from yt_comments.storage.protocols import BronzeCommentsReader
 from yt_comments.storage.silver_comments_repository import ParquetSilverCommentsRepository 
@@ -17,8 +18,6 @@ class PreprocessCommentsService:
     Silver-layer builder:
       Bronze (JSONL) -> deterministic transform -> Silver (Parquet)
     """
-    
-    PREPROCESS_VERSION = "v1" # for further preprocessing
     
     SILVER_SCHEMA = pa.schema(
         [
@@ -86,6 +85,6 @@ class PreprocessCommentsService:
             "is_reply": bool(c.is_reply),
             "text_raw": raw,
             "text_clean": cleaned,
-            "preprocess_version": self.PREPROCESS_VERSION,
+            "preprocess_version": PREPROCESS_VERSION,
             "processed_at": processed_at,
         }
