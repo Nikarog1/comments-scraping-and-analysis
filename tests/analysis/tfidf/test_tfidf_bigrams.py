@@ -8,7 +8,7 @@ from yt_comments.analysis.tfidf.models import TfidfConfig
 
 
 def _write_silver(tmp_path, comments, preprocess_version):
-    table = pa.table({"text_clean": comments, "preprocess_version": preprocess_version})
+    table = pa.table({"text_clean": comments, "preprocess_version": pa.array([preprocess_version] * len(comments))})
     path = tmp_path / "silver.parquet"
     pq.write_table(table, path)
     return str(path)

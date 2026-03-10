@@ -87,7 +87,12 @@ def test_cli_stats_writes_gold_artifact(tmp_path, capsys):
     silver_path = data_root / "silver" / video_id / "comments.parquet"
     silver_path.parent.mkdir(parents=True, exist_ok=True)
     pq.write_table(
-        pa.Table.from_pydict({"text_clean": ["the the cat", "world", None, "and you", "cool 123"]}),
+        pa.Table.from_pydict(
+            {
+                "text_clean": ["the the cat", "world", None, "and you", "cool 123"], 
+                "preprocess_version": ["v1"] * 5
+            }
+        ),
         silver_path,
     )
 

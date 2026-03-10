@@ -22,7 +22,7 @@ def test_gold_tfidf_keywords_repo_round_trip(tmp_path: Path) -> None:
         drop_numeric_tokens=True,
         lowercase=True,
         drop_stopwords=True,
-        lang="en",
+        stopwords_lang="en",
         min_df=2,
         max_df=0.9,  # example float threshold
         tf_mode="norm",

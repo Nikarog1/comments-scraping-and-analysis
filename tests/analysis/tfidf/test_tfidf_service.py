@@ -20,7 +20,7 @@ def _write_silver_comments(path: Path, texts: list[str | None], preprocess_versi
     table = pa.table(
         {
             "text_clean": pa.array(texts, type=pa.string()),
-            "preprocess_version": preprocess_version
+            "preprocess_version": pa.array([preprocess_version] * len(texts))
         }
     )
     pq.write_table(table, path)

@@ -293,7 +293,7 @@ def main(argv: list[str] | None = None) -> int:
         if not silver_path.exists():
             parser.error(f"Silver file not found: {silver_path}")
         
-        svc = BasicStatsService(preprocess_version="v1")
+        svc = BasicStatsService()
         cfg = BasicStatsConfig(
             top_n_tokens=args.top_n,
             min_token_len=args.min_token_len,
@@ -339,7 +339,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.min_ngram_df < 1:
             raise SystemExit("--min-ngram-df must be >= 1")
 
-        svc = TfidfService(preprocess_version="v1")
+        svc = TfidfService()
         cfg = TfidfConfig(
             top_k=args.top_k,
             min_token_len=args.min_token_len,

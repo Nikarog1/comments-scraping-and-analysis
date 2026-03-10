@@ -21,7 +21,7 @@ def test_basic_stats_service_computes_counts(tmp_path):
                 None,
                 "world world 123",
             ],
-            "preprocess_version": "v1"
+            "preprocess_version": ["v1"]*5
         }
     )
     pq.write_table(table, silver_path)

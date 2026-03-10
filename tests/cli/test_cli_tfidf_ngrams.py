@@ -7,17 +7,18 @@ from yt_comments.cli.main import main
 from yt_comments.storage.gold_tfidf_keywords_parquet_repository import ParquetTfidfKeywordsRepository
 
 
-def _write_silver_comments(path: Path, texts: list[str | None]) -> None:
+def _write_silver_comments(path: Path, texts: list[str | None], preprocess_version) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     
     table = pa.table(
         {
             "text_clean": pa.array(texts, type=pa.string()),
+            "preprocess_version": pa.array([preprocess_version]*len(texts), type=pa.string())
         }
     )
     pq.write_table(table, path)
 
-def test_cli_tfidf_bigrams(tmp_path: Path, monkeypatch):
+def test_cli_tfidf_bigrams(tmp_path: Path):
     data_root = tmp_path / "data"
     video_id = "vid1"
 
@@ -30,6 +31,7 @@ def test_cli_tfidf_bigrams(tmp_path: Path, monkeypatch):
             "funny dog",
             "cool vid"
         ],
+        "v1"
     )
 
     main(

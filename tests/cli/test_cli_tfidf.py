@@ -8,12 +8,13 @@ import pyarrow.parquet as pq
 from yt_comments.cli.main import main
 
 
-def _write_silver_comments(path: Path, texts: list[str | None]) -> None:
+def _write_silver_comments(path: Path, texts: list[str | None], preprocess_version) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     
     table = pa.table(
         {
             "text_clean": pa.array(texts, type=pa.string()),
+            "preprocess_version": pa.array([preprocess_version]*len(texts), type=pa.string())
         }
     )
     pq.write_table(table, path)
@@ -30,6 +31,7 @@ def test_cli_tfidf_writes_gold_artifact(tmp_path: Path, capsys) -> None:
             "this cat is amazing",
             "amazing video love it",
         ],
+        "v1"
     )
 
     exit_code = main(
