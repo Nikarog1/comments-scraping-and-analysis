@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 
 from yt_comments.analysis.basic_stats.models import BasicStatsConfig
 from yt_comments.analysis.basic_stats.service import BasicStatsService
+from yt_comments.analysis.corpus.service import CorpusService
 from yt_comments.analysis.tfidf.models import TfidfConfig
 from yt_comments.analysis.tfidf.service import TfidfService
 
@@ -23,6 +24,7 @@ from yt_comments.preprocessing.text_preprocessor import TextPreprocessor
 
 from yt_comments.storage.bronze_comments_repository import JSONLCommentsRepository
 from yt_comments.storage.gold_basic_stats_parquet_repository import ParquetBasicStatsRepository
+from yt_comments.storage.gold_corpus_df_parquet_repository import ParquetCorpusDfRepository
 from yt_comments.storage.gold_tfidf_keywords_parquet_repository import ParquetTfidfKeywordsRepository
 from yt_comments.storage.silver_comments_repository import ParquetSilverCommentsRepository
 
@@ -156,7 +158,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Arrow batch size (default: 5000)"
     )
     
-    # TFIDF
+    # TFIDF v2.1
     tfidf = subparser.add_parser(
         "tfidf", 
         help="Compute Gold v2 TF-IDF from Silver"
@@ -233,6 +235,73 @@ def build_parser() -> argparse.ArgumentParser:
         help="Max ngram to be extracted (default: 1 - meaning extraction of unigrams only)"
     )
     tfidf.add_argument(
+        "--min-ngram-df", 
+        type=int, 
+        default=2, 
+        help="Min df of ngram, i.e., in how many documents ngram must appear (default: 2)"
+    )
+    
+    # CORPUS
+    corpus = subparser.add_parser(
+        "corpus", 
+        help="Compute corpus across silver comments"
+    )
+    corpus.add_argument(
+        "--data-root", 
+        default="data", 
+        help="Project data directory (default: data)"
+    )
+    corpus.add_argument(
+        "--min-df", 
+        type=int, 
+        default=2, 
+        help="Min token df, i.e., in how many documents token must appear (default: 2)"
+    )
+    corpus.add_argument(
+        "--max-df", 
+        type=float, 
+        default=0.9, 
+        help="Max token df fraction, i.e., drop tokens appearing in more documents in percents (default: 0.9)"
+    )
+    corpus.add_argument(
+        "--keep-numeric", 
+        action="store_true", 
+        help="Do not drop numeric tokens"
+    )
+    corpus.add_argument(
+        "--no-lowercase", 
+        action="store_true", 
+        help="Do not lowercase before tokenization"
+    )
+    corpus.add_argument(
+        "--keep-stopwords", 
+        action="store_true", 
+        help="Do not drop stopwords"
+    )
+    corpus.add_argument(
+        "--lang", 
+        default="en",
+        help="Stopwords language (default: en)"
+    )
+    corpus.add_argument(
+        "--batch-size", 
+        type=int, 
+        default=5000, 
+        help="Arrow batch size (default: 5000)"
+    )
+    corpus.add_argument(
+        "--ngram-min", 
+        type=int, 
+        default=1, 
+        help="Min ngram to be extracted (default: 1)"
+    )
+    corpus.add_argument(
+        "--ngram-max", 
+        type=int, 
+        default=1, 
+        help="Max ngram to be extracted (default: 1 - meaning extraction of unigrams only)"
+    )
+    corpus.add_argument(
         "--min-ngram-df", 
         type=int, 
         default=2, 
@@ -377,6 +446,43 @@ def main(argv: list[str] | None = None) -> int:
                     f"score={kw.score:.3f} "
                     f"df={kw.df}"
                 )
+        return 0
+    
+    if args.command == "corpus":
+        
+        data_root = Path(args.data_root)
+        # silver_path = _silver_parquet_path(data_root, video_id)
+        # if not silver_path.exists():
+        #     parser.error(f"Silver file not found: {silver_path}")
+            
+        if args.ngram_min < 1:
+            raise SystemExit("--ngram-min must be >= 1")
+        if args.ngram_max < args.ngram_min:
+            raise SystemExit("--ngram-max must be >= --ngram-min")
+        if args.min_ngram_df < 1:
+            raise SystemExit("--min-ngram-df must be >= 1")
+
+        corpus = CorpusService(data_root=data_root)
+        cfg = TfidfConfig(
+            drop_numeric_tokens=not args.keep_numeric,
+            lowercase=not args.no_lowercase,
+            drop_stopwords=not args.keep_stopwords,
+            stopwords_lang=args.lang,
+            min_df=args.min_df,
+            max_df=args.max_df,
+            ngram_range=(args.ngram_min, args.ngram_max),
+            min_ngram_df=args.min_ngram_df,  
+        )
+        
+        result = corpus.build(config=cfg, batch_size=args.batch_size)
+        
+        repo = ParquetCorpusDfRepository(data_root=data_root)
+        repo.save(result)
+        
+        print("corpus_df:")
+        print(f"videos: {result.video_count}")
+        print(f"features: {len(result.tokens)}")
+        
         return 0
         
     return 2
