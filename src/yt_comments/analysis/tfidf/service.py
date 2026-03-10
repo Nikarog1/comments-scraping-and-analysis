@@ -1,19 +1,15 @@
-import hashlib
-import json
 import math
-import re
-from dataclasses import asdict
+
 from datetime import datetime, timezone
-from typing import Iterable, Optional
+from typing import Optional
 
 import pyarrow.parquet as pq
 
 from yt_comments.analysis.tfidf.accumulator import TfidfAccumulator
+from yt_comments.analysis.features import build_document_features, hash_config
 from yt_comments.analysis.tfidf.models import TfidfConfig, TfidfKeyword, TfidfKeywords
-from yt_comments.nlp.stopwords import get_stopwords
+from yt_comments.preprocessing.contract import PREPROCESS_VERSION
 
-
-_TOKEN_RE = re.compile(r"[a-zA-Z0-9_']+")
 
 class TfidfService:
     """
@@ -23,7 +19,7 @@ class TfidfService:
     Corpus: all comments of a single video (Silver parquet)
     """
     
-    def __init__(self, *, preprocess_version: str = "v1") -> None:
+    def __init__(self, *, preprocess_version: str = PREPROCESS_VERSION) -> None:
         self._preprocess_version = preprocess_version
         
     def compute_for_video(
@@ -51,7 +47,7 @@ class TfidfService:
             for comm in arr.to_pylist():
                 features: list[str] = []
                 if comm is not None and str(comm).strip() != "":
-                    features = self._build_document_features(str(comm), config)
+                    features = build_document_features(str(comm), config)
                 acc.add_document(features)
                 
         N = acc.doc_count_non_empty
@@ -102,7 +98,7 @@ class TfidfService:
             created_at_utc=created_at_utc,
             preprocess_version=self._preprocess_version,
             artifact_version="tfidf_v2_1",
-            config_hash=self._hash_config(config),
+            config_hash=hash_config(config),
             row_count=int(acc.row_count),
             empty_text_count=int(acc.empty_text_count),
             doc_count_non_empty=int(acc.doc_count_non_empty),
@@ -114,65 +110,6 @@ class TfidfService:
             config=config,
             keywords=keywords,
         )
-
-    def _build_document_features(self, text: str, config: TfidfConfig) -> list[str]:
-        """
-        Build the per-document feature list consumed by the accumulator.
-
-        Frozen v2.1 rule:
-        - tokenize first
-        - drop stopwords first
-        - then generate n-grams from the filtered token stream
-
-        This keeps vocabulary growth under better control and preserves
-        deterministic streaming behavior.
-        """
-        tokens = list(self._tokenize(text, config))
-        return list(self._generate_ngrams(tokens, config.ngram_range))
-
-    @staticmethod
-    def _generate_ngrams(tokens: list[str], ngram_range: tuple[int, int]) -> Iterable[str]: 
-        min_n, max_n = ngram_range
-
-        if min_n < 1:
-            raise ValueError("ngram_range min must be >= 1")
-        if max_n < min_n:
-            raise ValueError("ngram_range max must be >= 1")
-        
-        token_count = len(tokens)
-        if token_count == 0:
-            pass
-        
-        for n in range(min_n, max_n + 1): # crucial part; (1, 1) - produces unigrams, (1, 2) - both uni- and bigrams, (2, 2) - bigram only
-            if token_count < n:
-                continue
-            
-            for i in range(token_count - n + 1):
-                yield " ".join(tokens[i : i + n]) # dequeue can be used here, but slice was kept for simplification
-
-    @staticmethod
-    def _tokenize(text: str, config: TfidfConfig) -> Iterable[str]:
-        if config.lowercase:
-            text = text.lower()
-            
-        stopwords = get_stopwords(config.lang) if config.drop_stopwords else frozenset()
-        
-        for m in _TOKEN_RE.finditer(text): # finditer used since it returns a generator in comparison to findall
-            tok = m.group(0) # returns the matched string
-            
-            if len(tok) < config.min_token_len:
-                continue
-            if config.drop_numeric_tokens and tok.isdigit():
-                continue
-            if stopwords and tok in stopwords:
-                continue
-            
-            yield tok
-            
-    @staticmethod
-    def _hash_config(config: TfidfConfig) -> str:
-        payload = json.dumps(asdict(config), sort_keys=True, separators=(",", ":")).encode("utf-8") # dicts are not hashable, so need to convert to json string
-        return hashlib.sha256(payload).hexdigest()[:16]
     
     @staticmethod 
     def _df_cgf_to_str(v: int|float) -> str:

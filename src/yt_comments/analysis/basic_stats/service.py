@@ -1,18 +1,14 @@
 from __future__ import annotations
 
-import hashlib
-import json
 import re
 from collections import Counter
-from dataclasses import asdict
 from datetime import datetime, timezone
-from typing import Iterable, Optional
+from typing import Optional
 
-import pyarrow as pa
 import pyarrow.parquet as pq
 
 from yt_comments.analysis.basic_stats.models import BasicStats, BasicStatsConfig, TopToken
-from yt_comments.nlp.stopwords import get_stopwords
+from yt_comments.analysis.features import hash_config, tokenize
 from yt_comments.preprocessing.contract import PREPROCESS_VERSION
 
 
@@ -55,7 +51,7 @@ class BasicStatsService:
                     empty_text_count += 1
                     continue
                 
-                for tok in self._tokenize(comm, config):
+                for tok in tokenize(comm, config):
                     token_counts[tok] += 1
                     total_token_count += 1
         
@@ -70,37 +66,13 @@ class BasicStatsService:
             silver_path=str(silver_parquet_path),
             created_at_utc=created_at_utc,
             preprocess_version=self._preprocess_version,
-            config_hash=self._hash_config(config),
+            config_hash=hash_config(config),
             row_count=int(row_count),
             empty_text_count=int(empty_text_count),
             total_token_count=int(total_token_count),
             unique_token_count=int(unique_token_count),
             top_tokens=top_tokens,
         )
-    
-    @staticmethod
-    def _tokenize(text: str, config: BasicStatsConfig) -> Iterable[str]:
-        if config.lowercase:
-            text = text.lower()
-            
-        stopwords = get_stopwords(config.stopwords_lang) if config.drop_stopwords else frozenset()
-            
-        for m in _TOKEN_RE.finditer(text): # finditer used since it returns a generator in comparison to findall
-            tok = m.group(0) # returns the matched string
-            
-            if len(tok) < config.min_token_len:
-                continue
-            if config.drop_numeric_tokens and tok.isdigit():
-                continue
-            if stopwords and tok in stopwords:
-                continue
-            
-            yield tok
-            
-    @staticmethod
-    def _hash_config(config: BasicStatsConfig) -> str:
-        payload = json.dumps(asdict(config), sort_keys=True, separators=(",", ":")).encode("utf-8") # dicts are not hashable, so need to convert to json string
-        return  hashlib.sha256(payload).hexdigest()[:16]
             
                 
 
