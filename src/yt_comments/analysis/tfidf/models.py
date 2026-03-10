@@ -11,7 +11,7 @@ class TfidfConfig:
     drop_numeric_tokens: bool = True
     lowercase: bool = True
     drop_stopwords: bool = True
-    lang: str = "en"
+    stopwords_lang: str = "en"
     min_df: int | float = 2 # token must appear in at least 2 comments
     max_df: int | float = 0.9 # drop tokens appearing in >90% comments 
     tf_mode: str = "norm"
