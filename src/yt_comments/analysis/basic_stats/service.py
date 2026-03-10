@@ -1,23 +1,18 @@
 from __future__ import annotations
 
-import re
 from collections import Counter
 from datetime import datetime, timezone
 from typing import Optional
 
 import pyarrow.parquet as pq
 
+from yt_comments.analysis.features import hash_config, tokenize, read_preprocess_version
 from yt_comments.analysis.basic_stats.models import BasicStats, BasicStatsConfig, TopToken
-from yt_comments.analysis.features import hash_config, tokenize
-from yt_comments.preprocessing.contract import PREPROCESS_VERSION
 
-
-
-_TOKEN_RE = re.compile(r"[a-zA-Z0-9_']+")
 
 class BasicStatsService:
-    def __init__(self, *, preprocess_version: str = PREPROCESS_VERSION) -> None:
-        self._preprocess_version = preprocess_version
+    def __init__(self) -> None:
+        pass
         
     def compute_for_video(
             self,
@@ -28,6 +23,8 @@ class BasicStatsService:
             created_at_utc: Optional[datetime] = None,
             batch_size: int = 5000
     ) -> BasicStats:
+        preprocess_version = read_preprocess_version(silver_parquet_path=silver_parquet_path)
+        
         created_at_utc = created_at_utc or datetime.now(timezone.utc)
         if created_at_utc is None:
             raise ValueError("created_at_utc must be timezone-aware!")
@@ -65,7 +62,7 @@ class BasicStatsService:
             video_id=video_id,
             silver_path=str(silver_parquet_path),
             created_at_utc=created_at_utc,
-            preprocess_version=self._preprocess_version,
+            preprocess_version=preprocess_version,
             config_hash=hash_config(config),
             row_count=int(row_count),
             empty_text_count=int(empty_text_count),

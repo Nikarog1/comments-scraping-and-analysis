@@ -23,12 +23,13 @@ def test_basic_stats_service_to_repo_round_trip(tmp_path):
                 "",
                 None,
                 "world world 123",
-            ]
+            ],
+            "preprocess_version": "v1"
         }
     )
     pq.write_table(table, silver_path)
 
-    svc = BasicStatsService(preprocess_version="v1")
+    svc = BasicStatsService()
     cfg = BasicStatsConfig(top_n_tokens=10, min_token_len=2, drop_numeric_tokens=True)
 
     stats = svc.compute_for_video(

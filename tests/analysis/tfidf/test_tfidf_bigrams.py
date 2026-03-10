@@ -7,8 +7,8 @@ from yt_comments.analysis.tfidf.service import TfidfService
 from yt_comments.analysis.tfidf.models import TfidfConfig
 
 
-def _write_silver(tmp_path, comments):
-    table = pa.table({"text_clean": comments})
+def _write_silver(tmp_path, comments, preprocess_version):
+    table = pa.table({"text_clean": comments, "preprocess_version": preprocess_version})
     path = tmp_path / "silver.parquet"
     pq.write_table(table, path)
     return str(path)
@@ -22,7 +22,7 @@ def test_tfidf_with_bigrams(tmp_path: Path):
         "funny dog",
         "cool vid"
     ]
-    silver_path = _write_silver(tmp_path, comments)
+    silver_path = _write_silver(tmp_path, comments, preprocess_version="v1")
     
     cfg = TfidfConfig(
         top_k=10,
@@ -30,14 +30,14 @@ def test_tfidf_with_bigrams(tmp_path: Path):
         drop_numeric_tokens=True,
         lowercase=True,
         drop_stopwords=True,
-        lang="en",
+        stopwords_lang="en",
         min_df=1,
         max_df=1.0,
         tf_mode="norm",
         idf_mode="smooth_log_plus1_ln",
         ngram_range=(1,2),
     )
-    service = TfidfService(preprocess_version="v1")
+    service = TfidfService()
     
     result = service.compute_for_video(
         video_id="id1",

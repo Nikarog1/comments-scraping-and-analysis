@@ -7,8 +7,8 @@ from yt_comments.analysis.tfidf.service import TfidfService
 from yt_comments.analysis.tfidf.models import TfidfConfig
 
 
-def _write_silver(tmp_path, comments):
-    table = pa.table({"text_clean": comments})
+def _write_silver(tmp_path, comments, preprocess_version):
+    table = pa.table({"text_clean": comments, "preprocess_version": preprocess_version})
     path = tmp_path / "silver.parquet"
     pq.write_table(table, path)
     return str(path)
@@ -20,7 +20,7 @@ def test_min_ngram_df_filters_rare_bigrams_but_keeps_unigrams(tmp_path: Path):
         "funny dog",
         "cool vid"
     ]
-    silver_path = _write_silver(tmp_path, comments)
+    silver_path = _write_silver(tmp_path, comments, preprocess_version="v1")
     
     cfg = TfidfConfig(
         top_k=10,
@@ -28,7 +28,7 @@ def test_min_ngram_df_filters_rare_bigrams_but_keeps_unigrams(tmp_path: Path):
         drop_numeric_tokens=True,
         lowercase=True,
         drop_stopwords=True,
-        lang="en",
+        stopwords_lang="en",
         min_df=1,
         max_df=1.0,
         tf_mode="norm",
@@ -36,7 +36,7 @@ def test_min_ngram_df_filters_rare_bigrams_but_keeps_unigrams(tmp_path: Path):
         ngram_range=(1,2),
         min_ngram_df=2
     )
-    service = TfidfService(preprocess_version="v1")
+    service = TfidfService()
     
     result = service.compute_for_video(
         video_id="id1",

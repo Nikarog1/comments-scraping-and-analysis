@@ -3,7 +3,10 @@ import json
 import re
 
 from dataclasses import asdict
+from pathlib import Path
 from typing import Iterable
+
+import pyarrow.parquet as pq
 
 from yt_comments.analysis.basic_stats.models import BasicStatsConfig
 from yt_comments.analysis.tfidf.models import TfidfConfig
@@ -69,3 +72,20 @@ def tokenize(text: str, config: BasicStatsConfig | TfidfConfig) -> Iterable[str]
             continue
         
         yield tok
+        
+def read_preprocess_version(silver_parquet_path: Path | str) -> str:
+    """Read preprocess_version from a Silver comments parquet file."""
+    table = pq.read_table(silver_parquet_path, columns=["preprocess_version"])
+
+    values = table.column("preprocess_version").to_pylist()
+    versions = {v for v in values if v is not None}
+
+    if not versions:
+        raise ValueError(f"Missing preprocess_version in Silver file: {silver_parquet_path}")
+
+    if len(versions) != 1:
+        raise ValueError(
+            f"Multiple preprocess_version values found in Silver file: {silver_parquet_path}"
+        )
+
+    return next(iter(versions))

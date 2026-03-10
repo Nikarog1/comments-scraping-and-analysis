@@ -14,12 +14,13 @@ from yt_comments.analysis.tfidf.service import TfidfService
 
 
 
-def _write_silver_comments(path: Path, texts: list[str | None]) -> None:
+def _write_silver_comments(path: Path, texts: list[str | None], preprocess_version) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     
     table = pa.table(
         {
             "text_clean": pa.array(texts, type=pa.string()),
+            "preprocess_version": preprocess_version
         }
     )
     pq.write_table(table, path)
@@ -33,17 +34,18 @@ def test_tfidf_service_computes_expected_keywords(tmp_path: Path) -> None:
             "i love that cat",
             "this cat is amazing",
             "amazing winter love it"
-        ]
+        ],
+        preprocess_version="v1"
     )
     
-    service = TfidfService(preprocess_version="v1")
+    service = TfidfService()
     cfg = TfidfConfig(
         top_k=10,
         min_token_len=2,
         drop_numeric_tokens=True,
         lowercase=True,
         drop_stopwords=True,
-        lang="en",
+        stopwords_lang="en",
         min_df=1,
         max_df=1.0,
         tf_mode="norm",
@@ -112,17 +114,18 @@ def test_tfidf_service_computes_expected_keywords(tmp_path: Path) -> None:
                 "i love that cat",
                 "this cat is amazing",
                 "amazing winter love it"
-            ]
+            ],
+            preprocess_version="v1"
         )
         
-        service = TfidfService(preprocess_version="v1")
+        service = TfidfService()
         cfg = TfidfConfig(
             top_k=10,
             min_token_len=2,
             drop_numeric_tokens=True,
             lowercase=True,
             drop_stopwords=True,
-            lang="en",
+            stopwords_lang="en",
             min_df=2,
             max_df=1.0,
             tf_mode="norm",
@@ -149,17 +152,18 @@ def test_tfidf_service_computes_expected_keywords(tmp_path: Path) -> None:
                 "",
                 None,
                 "1 22 333"
-            ]
+            ],
+            preprocess_version="v1"
         )
         
-        service = TfidfService(preprocess_version="v1")
+        service = TfidfService()
         cfg = TfidfConfig(
             top_k=10,
             min_token_len=2,
             drop_numeric_tokens=True,
             lowercase=True,
             drop_stopwords=True,
-            lang="en",
+            stopwords_lang="en",
             min_df=1,
             max_df=1.0,
             tf_mode="norm",

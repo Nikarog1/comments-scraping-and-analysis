@@ -5,10 +5,9 @@ from typing import Optional
 
 import pyarrow.parquet as pq
 
+from yt_comments.analysis.features import build_document_features, hash_config, read_preprocess_version
 from yt_comments.analysis.tfidf.accumulator import TfidfAccumulator
-from yt_comments.analysis.features import build_document_features, hash_config
 from yt_comments.analysis.tfidf.models import TfidfConfig, TfidfKeyword, TfidfKeywords
-from yt_comments.preprocessing.contract import PREPROCESS_VERSION
 
 
 class TfidfService:
@@ -19,8 +18,8 @@ class TfidfService:
     Corpus: all comments of a single video (Silver parquet)
     """
     
-    def __init__(self, *, preprocess_version: str = PREPROCESS_VERSION) -> None:
-        self._preprocess_version = preprocess_version
+    def __init__(self) -> None:
+        pass
         
     def compute_for_video(
             self,
@@ -31,6 +30,7 @@ class TfidfService:
             created_at_utc: Optional[datetime] = None,
             batch_size: int = 5000,
     ) -> TfidfKeywords:
+        preprocess_version = read_preprocess_version(silver_parquet_path=silver_parquet_path)
         
         created_at_utc = created_at_utc or datetime.now(timezone.utc)
         if created_at_utc.tzinfo is None:
@@ -96,7 +96,7 @@ class TfidfService:
             video_id=video_id,
             silver_path=silver_parquet_path,
             created_at_utc=created_at_utc,
-            preprocess_version=self._preprocess_version,
+            preprocess_version=preprocess_version,
             artifact_version="tfidf_v2_1",
             config_hash=hash_config(config),
             row_count=int(acc.row_count),
