@@ -13,18 +13,19 @@ EN_STOPWORDS = frozenset(
         "why","will","with","you","your","yours", "do", "does", "did", 
         "can", "could", "would", "should", "than", "very", "all", "any", 
         "each", "few", "more", "most", "other", "some", "such", "same", 
-        "only", "just", "it's", "you're", "i'm", "that's"
+        "only", "it's", "you're", "i'm", "that's", "gonna", "wanna"
     }
 )
 
 # Domain stopwords: platform-specific filler words
 YOUTUBE_EN_STOPWORDS = frozenset(
     {
-        "hi", "hello", "yes", "yeah", "yep", "no", "nah", "nope", "actually", 
-        "think", "one", "video", "vid", "videos", "bro", "lol", "hey", "omg",  
+        "hi", "hii", "hiii", "hello", "yes", "yeah", "yep", "no", "nah", "nope", 
+        "video", "vid", "videos", "bro", "lol", "hey", "omg",  
         "ok", "okay", "pls", "please", "wow", "damn", "uh", "huh", "channel", 
         "upload", "post", "comment", "comments", "sub", "subscribe", "much",
-        "now"
+        "now", "vids", "ah", "ahh", "ahhh", "ahhhh", "thanks", "thank",
+        "thx", "lmao", "lmfao", "rofl", "wtf", "idk", "btw"
     }
 )
 
@@ -32,7 +33,8 @@ YOUTUBE_EN_STOPWORDS = frozenset(
 SENTIMENT_EN_VOCABULARY = frozenset(
     {
         "amazing", "great", "awesome", "perfect", "beautiful", "favorite",
-        "favourite", "nice", "cool", "sweet", "love", "best", "top", "sweet"
+        "favourite", "nice", "cool", "sweet", "love", "best", "top", "excite",
+        "excited", "exciting", "incredible", "dangerous", "freaking"
     }
 )
 
