@@ -52,6 +52,7 @@ def test_cli_tfidf_writes_gold_artifact(tmp_path: Path, capsys) -> None:
             "en",
             "--batch-size",
             "2",
+            "--keep-sentiment"
         ]
     )
     

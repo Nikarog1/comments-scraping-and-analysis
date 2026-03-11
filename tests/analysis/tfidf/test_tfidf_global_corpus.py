@@ -63,6 +63,7 @@ def test_tfidf_service_uses_global_corpus_idf(tmp_path: Path) -> None:
         silver_parquet_path=silver_path,
         config=config,
         global_corpus=corpus,
+        unfilter_sentiment=False,
     )
     
     tokens = {row.token: row for row in result.keywords}

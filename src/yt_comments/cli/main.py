@@ -248,6 +248,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Use global corpus across all silver comments (default: False)"
     )
+    tfidf.add_argument(
+        "--keep-sentiment",
+        action="store_true",
+        help="Keep sentiment words in final result (default: False)"
+    )
     
     # CORPUS
     corpus = subparser.add_parser(
@@ -444,7 +449,8 @@ def main(argv: list[str] | None = None) -> int:
             config=cfg,
             created_at_utc=datetime.now(timezone.utc),
             batch_size=args.batch_size,
-            global_corpus=corpus  
+            global_corpus=corpus,
+            unfilter_sentiment=not args.keep_sentiment,  
         )
         
         repo = ParquetTfidfKeywordsRepository(data_root=data_root)

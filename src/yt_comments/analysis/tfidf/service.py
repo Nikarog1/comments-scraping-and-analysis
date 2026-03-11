@@ -6,6 +6,7 @@ import pyarrow.parquet as pq
 
 from yt_comments.analysis.corpus.models import CorpusDfTable
 from yt_comments.analysis.features import build_document_features, hash_config, read_preprocess_version
+from yt_comments.analysis.keyword_quality import filter_keywords
 from yt_comments.analysis.tfidf.accumulator import TfidfAccumulator
 from yt_comments.analysis.tfidf.models import TfidfConfig, TfidfKeyword, TfidfKeywords
 
@@ -27,6 +28,7 @@ class TfidfService:
         config: TfidfConfig,
         global_corpus: CorpusDfTable | None = None,
         created_at_utc: datetime | None = None,
+        unfilter_sentiment: bool = True,
         batch_size: int = 5000,
     ) -> TfidfKeywords:
         
@@ -121,6 +123,8 @@ class TfidfService:
                 )
 
             scored.sort(key=lambda k: (-k.score, -k.df, k.token))
+            if unfilter_sentiment:
+                scored = filter_keywords(scored)
             keywords = tuple(scored[: config.top_k])
 
         return TfidfKeywords(

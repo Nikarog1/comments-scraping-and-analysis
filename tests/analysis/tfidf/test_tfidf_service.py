@@ -56,7 +56,8 @@ def test_tfidf_service_computes_expected_keywords(tmp_path: Path) -> None:
         silver_parquet_path=str(silver_path),
         config=cfg,
         created_at_utc=datetime(2026,1,1,12,0,0, tzinfo=timezone.utc),
-        batch_size=2
+        batch_size=2,
+        unfilter_sentiment=False
     )
     
     assert result.video_id == video_id
@@ -136,7 +137,8 @@ def test_tfidf_service_computes_expected_keywords(tmp_path: Path) -> None:
             silver_parquet_path=str(silver_path),
             config=cfg,
             created_at_utc=datetime(2026,1,1,12,0,0, tzinfo=timezone.utc),
-            batch_size=2
+            batch_size=2,
+            unfilter_sentiment=False,
         )
         
         assert result.vocab_size == 3
@@ -174,7 +176,8 @@ def test_tfidf_service_computes_expected_keywords(tmp_path: Path) -> None:
             silver_parquet_path=str(silver_path),
             config=cfg,
             created_at_utc=datetime(2026,1,1,12,0,0, tzinfo=timezone.utc),
-            batch_size=2
+            batch_size=2,
+            unfilter_sentiment=False,
         )
         
         assert result.row_count == 3
