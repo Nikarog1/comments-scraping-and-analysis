@@ -3,10 +3,14 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from yt_comments.cli.main import main
 from yt_comments.analysis.corpus.models import CorpusDfTable, CorpusTokenStat
 from yt_comments.analysis.features import hash_config
 from yt_comments.analysis.tfidf.models import TfidfConfig
+
+from yt_comments.cli.main import main
+
+from yt_comments.nlp.stopwords import STOPWORDS
+
 from yt_comments.storage.gold_corpus_df_parquet_repository import ParquetCorpusDfRepository
 from yt_comments.storage.gold_tfidf_keywords_parquet_repository import ParquetTfidfKeywordsRepository
 
@@ -46,6 +50,8 @@ def test_cli_tfidf_uses_global_corpus(tmp_path: Path) -> None:
         min_df=1,
         max_df=1.0,
         min_ngram_df=1,
+        stopwords_lang="en",
+        stopwords_hash=str(hash_config(sorted(STOPWORDS["en"])))
     )
 
     corpus = CorpusDfTable(
@@ -69,6 +75,8 @@ def test_cli_tfidf_uses_global_corpus(tmp_path: Path) -> None:
             "--data-root",
             str(data_root),
             "--use-corpus",
+            "--lang",
+            "en",
             "--ngram-min",
             "1",
             "--ngram-max",

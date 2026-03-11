@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from datetime import datetime, timezone
 
+from yt_comments.analysis.features import hash_config
 from yt_comments.analysis.basic_stats.models import BasicStatsConfig
 from yt_comments.analysis.basic_stats.service import BasicStatsService
 from yt_comments.analysis.corpus.service import CorpusService
@@ -18,6 +19,8 @@ from yt_comments.ingestion.scrape_service import ScrapeCommentsService
 from yt_comments.ingestion.video_id_extractor import extract_video_id
 from yt_comments.ingestion.youtube_api_client import YouTubeApiClient
 from yt_comments.ingestion.youtube_client import StubYouTubeClient
+
+from yt_comments.nlp.stopwords import STOPWORDS
 
 from yt_comments.preprocessing.preprocess_service import PreprocessCommentsService
 from yt_comments.preprocessing.text_preprocessor import TextPreprocessor
@@ -417,6 +420,8 @@ def main(argv: list[str] | None = None) -> int:
             corpus = ParquetCorpusDfRepository(data_root=data_root).load()
         else:
             corpus = None
+            
+        stopwords_hash = str(hash_config(sorted(STOPWORDS[args.lang])))
 
         svc = TfidfService()
         cfg = TfidfConfig(
@@ -426,6 +431,7 @@ def main(argv: list[str] | None = None) -> int:
             lowercase=not args.no_lowercase,
             drop_stopwords=not args.keep_stopwords,
             stopwords_lang=args.lang,
+            stopwords_hash=stopwords_hash,
             min_df=args.min_df,
             max_df=args.max_df,
             ngram_range=(args.ngram_min, args.ngram_max),
@@ -473,12 +479,15 @@ def main(argv: list[str] | None = None) -> int:
         if args.min_ngram_df < 1:
             raise SystemExit("--min-ngram-df must be >= 1")
 
+        stopwords_hash = str(hash_config(sorted(STOPWORDS[args.lang])))
+        
         corpus = CorpusService(data_root=data_root)
         cfg = TfidfConfig(
             drop_numeric_tokens=not args.keep_numeric,
             lowercase=not args.no_lowercase,
             drop_stopwords=not args.keep_stopwords,
             stopwords_lang=args.lang,
+            stopwords_hash=stopwords_hash,
             min_df=args.min_df,
             max_df=args.max_df,
             ngram_range=(args.ngram_min, args.ngram_max),

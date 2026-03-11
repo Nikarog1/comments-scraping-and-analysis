@@ -2,9 +2,9 @@ import hashlib
 import json
 import re
 
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Any, cast, Iterable
 
 import pyarrow.parquet as pq
 
@@ -15,8 +15,17 @@ from yt_comments.nlp.stopwords import get_stopwords
 
 _TOKEN_RE = re.compile(r"[a-zA-Z0-9_']+")
 
-def hash_config(config: BasicStatsConfig | TfidfConfig) -> str:
-    payload = json.dumps(asdict(config), sort_keys=True, separators=(",", ":")).encode("utf-8") # dicts are not hashable, so need to convert to json string
+def hash_config(config: Any) -> str:
+    if is_dataclass(config):
+        payload_obj = asdict(cast(Any, config)) # is_dataclass returns true for both data class instance and class
+    else: 
+        payload_obj = config
+    payload = json.dumps(
+        payload_obj, 
+        sort_keys=True, 
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8") # dicts are not hashable, so need to convert to json string
     return hashlib.sha256(payload).hexdigest()[:16]
 
 def build_document_features(text: str, config: TfidfConfig) -> list[str]:
