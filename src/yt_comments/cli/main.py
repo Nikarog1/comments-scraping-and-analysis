@@ -58,7 +58,7 @@ def build_parser() -> argparse.ArgumentParser:
     scrape.add_argument(
         "--limit", 
         type=int, 
-        default=200, 
+        default=5000, 
         help="Maximum number of comments to fetch"
     )
     scrape.add_argument(
