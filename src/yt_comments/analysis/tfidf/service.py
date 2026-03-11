@@ -90,8 +90,9 @@ class TfidfService:
                     df = acc.df[tok]
                 else:
                     if tok not in global_corpus_df:
-                        raise KeyError(f"Token {tok!r} missing from global corpus")
-                    df = global_corpus_df[tok]
+                        df = 0
+                    else:
+                        df = global_corpus_df[tok]
 
                 if df < min_df_abs or df > max_df_abs:
                     continue
