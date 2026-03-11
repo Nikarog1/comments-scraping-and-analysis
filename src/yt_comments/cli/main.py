@@ -158,7 +158,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Arrow batch size (default: 5000)"
     )
     
-    # TFIDF v2.1
+    # TFIDF
     tfidf = subparser.add_parser(
         "tfidf", 
         help="Compute Gold v2 TF-IDF from Silver"
@@ -239,6 +239,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=int, 
         default=2, 
         help="Min df of ngram, i.e., in how many documents ngram must appear (default: 2)"
+    )
+    tfidf.add_argument(
+        "--use-corpus",
+        action="store_true",
+        help="Use global corpus across all silver comments (default: False)"
     )
     
     # CORPUS
@@ -407,6 +412,11 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit("--ngram-max must be >= --ngram-min")
         if args.min_ngram_df < 1:
             raise SystemExit("--min-ngram-df must be >= 1")
+        
+        if args.use_corpus == True:
+            corpus = ParquetCorpusDfRepository(data_root=data_root).load()
+        else:
+            corpus = None
 
         svc = TfidfService()
         cfg = TfidfConfig(
@@ -427,7 +437,8 @@ def main(argv: list[str] | None = None) -> int:
             silver_parquet_path=str(silver_path),
             config=cfg,
             created_at_utc=datetime.now(timezone.utc),
-            batch_size=args.batch_size  
+            batch_size=args.batch_size,
+            global_corpus=corpus  
         )
         
         repo = ParquetTfidfKeywordsRepository(data_root=data_root)
