@@ -6,6 +6,8 @@ from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Any, cast, Iterable
 
+from nltk.stem import PorterStemmer
+
 import pyarrow.parquet as pq
 
 from yt_comments.analysis.basic_stats.models import BasicStatsConfig
@@ -13,6 +15,7 @@ from yt_comments.analysis.tfidf.models import TfidfConfig
 from yt_comments.nlp.stopwords import get_stopwords
 
 
+_PORTER = PorterStemmer()
 _TOKEN_RE = re.compile(r"[a-zA-Z0-9_']+")
 
 def hash_config(config: Any) -> str:
@@ -98,3 +101,11 @@ def read_preprocess_version(silver_parquet_path: Path | str) -> str:
         )
 
     return next(iter(versions))
+
+def normalize_token(token: str, *, mode: str) -> str:
+    if mode == "none":
+        return token 
+    if mode == "stem_en":
+        return _PORTER.stem(token)
+    
+    raise ValueError(f"Unsupported normalization mode: {mode}")
