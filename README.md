@@ -30,6 +30,7 @@ py -m pip install -e ".[dev]"
 # Example Workflow
 
 Use --help to get more information on each command and its arguments.
+
 <video_id> can be either pure YouTube video id or just a normal URL.
 
 ```bash
