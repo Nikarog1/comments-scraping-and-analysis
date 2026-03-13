@@ -27,6 +27,23 @@ py -m pip install -e ".[dev]"
 
 ---
 
+# Example Workflow
+
+Use --help to get more information on each command and its arguments.
+
+```bash
+yt_comments scrape <video_id>
+yt_comments preprocess <video_id>
+yt_comments stats <video_id>
+yt_comments tfidf <video_id>
+
+# optional cross-video corpus
+yt_comments corpus
+yt_comments tfidf <video_id> --use-corpus
+```
+
+---
+
 # Project Architecture
 
 The pipeline follows a **Bronze → Silver → Gold** design.
@@ -135,7 +152,7 @@ data/gold/basic_stats/<video_id>/stats.parquet
 
 **CLI**
 ```bash
-yt-comments stats <video_id>
+yt_comments stats <video_id>
 ```
 
 ### Gold v2 — TF-IDF Keywords
@@ -161,10 +178,68 @@ Each artifact includes:
 - document statistics
 - ranked TF-IDF keywords
 
+Configuration hashes include:
+
+- analysis configuration
+- stopword vocabulary
+- keyword quality rules
+
+This ensures that artifacts produced with different configurations cannot be accidentally mixed.
+
 **CLI**
 ```bash
 yt_comments tfidf <video_id>
 ```
+
+### N-gram Support
+
+TF-IDF supports both:
+
+- unigrams
+- bigrams (any n-grams)
+
+Bigrams are generated deterministically during feature extraction.
+
+Example keywords:
+
+- black cat
+- rain sounds
+- keyboard tapping
+
+### Gold v3 — Cross-Video Corpus
+
+Gold v3 introduces a **global corpus artifact** used for cross-video TF-IDF.
+
+Instead of computing document frequency only within a single video, the pipeline can compute document frequency across multiple videos.
+
+This improves keyword extraction by identifying terms that are unique to a specific video compared to the broader corpus.
+
+**Document unit**
+
+1 video = 1 document
+
+**Meaning**
+
+df(token) = number of videos containing the token
+
+**Output**
+
+data/gold/corpus_df/corpus.parquet
+
+**CLI**
+
+```bash
+yt_comments corpus
+```
+
+The corpus artifact stores:
+
+- token
+- document frequency
+- total video count
+- configuration metadata
+
+TF-IDF can optionally use this artifact to compute global IDF values.
 
 
 ## TF-IDF Definition
@@ -208,6 +283,26 @@ The pipeline guarantees:
 
 All Gold artifacts are **self-describing and reproducible**.
 
+### Global TF-IDF (v3)
+
+If a global corpus artifact is available, TF-IDF can compute IDF using cross-video statistics.
+
+Local video:
+
+- TF computed from comments of the target video
+
+Global corpus:
+
+- IDF computed using document frequencies across videos
+
+Formula remains:
+
+score(t) = avg_tf(t) * idf(t)
+
+but:
+
+N = number of videos in the corpus
+
 ---
 
 # Project Structure
@@ -220,7 +315,10 @@ comments-scraping-and-analysis/
 │   └── yt_comments/
 │       ├── analysis/
 │       │   ├── basic_stats/
-│       │   └── tfidf/
+│       │   ├── tfidf/
+│       │   ├── corpus/
+│       │   ├── features.py
+│       │   └── keyword_quality.py
 │       ├── cli/
 │       ├── ingestion/
 │       ├── nlp/
@@ -251,21 +349,75 @@ The project prioritizes:
 - clear separation of concerns
 - streaming processing where justified
 
+
+## Feature Generation
+
+Tokenization and feature generation are centralized in:
+
+analysis/features.py
+
+Responsibilities:
+
+- tokenization
+- stopword filtering
+- n-gram generation
+- configuration hashing
+- preprocessing metadata validation
+
+This module is shared across:
+
+- basic_stats
+- tfidf
+- corpus
+
+Centralizing feature generation ensures that all analysis stages operate on the **same feature space**, preventing drift between artifacts.
+
+
+## Stopwords
+
+Stopwords are defined in:
+
+nlp/stopwords.py
+
+Three vocabularies are maintained:
+
+- linguistic stopwords
+- YouTube-specific conversational stopwords
+- sentiment vocabulary
+
+Sentiment vocabulary is **not removed during preprocessing**, because it may be useful for future sentiment analysis.
+
+Stopwords are included in the TF-IDF configuration hash to ensure reproducibility when the vocabulary changes.
+
+
+## Keyword Quality Filtering
+
+After TF-IDF scoring, keywords are filtered using deterministic rules to improve readability.
+
+Examples of filtered tokens:
+
+- sentiment unigrams (e.g. "amazing", "great")
+- praise bigrams (e.g. "great video", "amazing video")
+
+This filtering step removes conversational praise phrases while preserving topical keywords.
+
+Filtering rules are versioned via:
+
+KEYWORD_QUALITY_VERSION
+
 ---
 
 # Future Extensions
 
 Potentional next stages:
 
-- cross-video TF-IDF corpus (Gold v3)
-- stopwords enhancments & comment-domain stopwords -> DONE, should be revised after testing with different videos from different fields
-- add keyword blacklist -> DONE
-- additional languages support
+- lemmatization
+- multi-language support
 - topic clustering
-- bigrams -> DONE
-- semantic embeddings 
-- channel-level analytics 
-- incremental corpus statistics 
+- incremental corpus updates
+- semantic embeddings
+- channel-level analytics
+- visualization dashboards
 
 ---
 
