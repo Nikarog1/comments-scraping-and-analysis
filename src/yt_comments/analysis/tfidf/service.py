@@ -1,12 +1,13 @@
 import math
 from datetime import datetime, timezone
+from dataclasses import asdict
 from pathlib import Path
 
 import pyarrow.parquet as pq
 
 from yt_comments.analysis.corpus.models import CorpusDfTable
 from yt_comments.analysis.features import build_document_features, hash_config, read_preprocess_version
-from yt_comments.analysis.keyword_quality import filter_keywords
+from yt_comments.analysis.keyword_quality import filter_keywords, KEYWORD_QUALITY_VERSION
 from yt_comments.analysis.tfidf.accumulator import TfidfAccumulator
 from yt_comments.analysis.tfidf.models import TfidfConfig, TfidfKeyword, TfidfKeywords
 
@@ -33,7 +34,12 @@ class TfidfService:
     ) -> TfidfKeywords:
         
         preprocess_version = read_preprocess_version(silver_parquet_path)
-        config_hash = hash_config(config)
+        config_hash = hash_config(
+            {
+                "config": asdict(config),
+                "keywords_version": KEYWORD_QUALITY_VERSION
+                }   
+        )
 
         created_at_utc = created_at_utc or datetime.now(timezone.utc)
         if created_at_utc.tzinfo is None:
