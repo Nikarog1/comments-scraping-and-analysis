@@ -84,6 +84,7 @@ def test_cli_tfidf_uses_global_corpus(tmp_path: Path) -> None:
             "--data-root",
             str(data_root),
             "--use-corpus",
+            "--keep-sentiment",
             "--lang",
             "en",
             "--ngram-min",

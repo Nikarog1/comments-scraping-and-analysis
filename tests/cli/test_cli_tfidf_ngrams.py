@@ -40,6 +40,7 @@ def test_cli_tfidf_bigrams(tmp_path: Path):
             video_id,
             "--data-root",
             str(data_root),
+            "--keep-sentiment",
             "--ngram-min",
             "1",
             "--ngram-max",

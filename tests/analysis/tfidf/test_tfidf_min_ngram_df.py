@@ -43,7 +43,8 @@ def test_min_ngram_df_filters_rare_bigrams_but_keeps_unigrams(tmp_path: Path):
         silver_parquet_path=silver_path,
         config=cfg,
         created_at_utc=datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
-        batch_size=2
+        batch_size=2,
+        unfilter_sentiment=False,
     )
     
     tokens = {kw.token for kw in result.keywords}
