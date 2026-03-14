@@ -6,7 +6,7 @@ from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Any, cast, Iterable
 
-from nltk.stem import PorterStemmer
+from nltk.stem import SnowballStemmer
 
 import pyarrow.parquet as pq
 
@@ -15,7 +15,7 @@ from yt_comments.analysis.tfidf.models import TfidfConfig
 from yt_comments.nlp.stopwords import get_stopwords
 
 
-_PORTER = PorterStemmer()
+_STEMMER = SnowballStemmer("english")
 _TOKEN_RE = re.compile(r"[a-zA-Z0-9_']+")
 
 def hash_config(config: Any) -> str:
@@ -106,6 +106,6 @@ def normalize_token(token: str, *, mode: str) -> str:
     if mode == "none":
         return token 
     if mode == "stem_en":
-        return _PORTER.stem(token)
+        return _STEMMER.stem(token)
     
     raise ValueError(f"Unsupported normalization mode: {mode}")
