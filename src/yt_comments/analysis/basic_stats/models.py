@@ -17,6 +17,8 @@ class BasicStatsConfig:
     lowercase: bool = True # added for explicity and reproducibility
     drop_stopwords: bool = True
     stopwords_lang: str = "en"
+    stopwords_hash: str = "dummy"
+    normalization: str = "none" # stemming
     
 @dataclass(frozen=True, slots=True)
 class TopToken:

@@ -13,6 +13,7 @@ class TfidfConfig:
     drop_stopwords: bool = True
     stopwords_lang: str = "en"
     stopwords_hash: str = "dummy"
+    normalization: str = "none" # stemming
     min_df: int | float = 2 # token must appear in at least 2 comments
     max_df: int | float = 0.9 # drop tokens appearing in >90% comments 
     tf_mode: str = "norm"
