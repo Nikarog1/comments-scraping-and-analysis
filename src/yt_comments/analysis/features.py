@@ -83,6 +83,7 @@ def tokenize(text: str, config: BasicStatsConfig | TfidfConfig) -> Iterable[str]
         if stopwords and tok in stopwords:
             continue
         
+        tok = normalize_token(tok, mode=config.normalization)
         yield tok
         
 def read_preprocess_version(silver_parquet_path: Path | str) -> str:
