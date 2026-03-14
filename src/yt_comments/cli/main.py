@@ -253,6 +253,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Keep sentiment words in final result (default: False)"
     )
+    tfidf.add_argument(
+        "--stemming-mode",
+        default="none", 
+        help="Normalize words so related forms (-ing, -ed, -s) collapse into one base form (default: none)\nCurrent supported mods: stem_en"
+    )
     
     # CORPUS
     corpus = subparser.add_parser(
@@ -375,6 +380,8 @@ def main(argv: list[str] | None = None) -> int:
         if not silver_path.exists():
             parser.error(f"Silver file not found: {silver_path}")
         
+        stopwords_hash = str(hash_config(sorted(STOPWORDS[args.lang])))
+        
         svc = BasicStatsService()
         cfg = BasicStatsConfig(
             top_n_tokens=args.top_n,
@@ -383,6 +390,7 @@ def main(argv: list[str] | None = None) -> int:
             lowercase=not args.no_lowercase,
             drop_stopwords=not args.keep_stopwords,
             stopwords_lang=args.lang,
+            stopwords_hash=stopwords_hash,
         )
                 
         b_stats = svc.compute_for_video(
@@ -437,6 +445,7 @@ def main(argv: list[str] | None = None) -> int:
             drop_stopwords=not args.keep_stopwords,
             stopwords_lang=args.lang,
             stopwords_hash=stopwords_hash,
+            normalization=args.stemming_mode,
             min_df=args.min_df,
             max_df=args.max_df,
             ngram_range=(args.ngram_min, args.ngram_max),
