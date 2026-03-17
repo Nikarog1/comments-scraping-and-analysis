@@ -6,7 +6,7 @@ from typing import Iterable, Optional
 
 import requests
 
-from yt_comments.ingestion.models import Comment
+from yt_comments.ingestion.models import Comment, ChannelVideo, ChannelVideoDiscovery
 from yt_comments.ingestion.youtube_client import YouTubeClient
 
 
@@ -120,3 +120,121 @@ class YouTubeApiClient(YouTubeClient):
             page_token = data.get("nextPageToken")
             if not page_token:
                 break
+            
+    def discover_videos(self, request: ChannelVideoDiscovery) -> Iterable[ChannelVideo]:
+        """
+        Discover videos for a channel using YouTube Data API v3 search.list.
+
+        Minimal version:
+        - filters by channel_id
+        - returns only videos
+        - supports published_after / published_before
+        - supports views filtering
+        """
+        base_url = "https://www.googleapis.com/youtube/v3/search" # commentSearch returns search results, not full results    
+        session = requests.Session()
+        
+        page_token: Optional[str] = None
+        yielded = 0
+        
+        while True:
+            remaining = None if request.video_limit is None else request.video_limit - yielded # how many more vids are still needed 
+            if remaining is not None and remaining <= 0: # double-checking (another one is right after generator) not to waste quota if smth happens
+                break
+            
+            max_results = 50 if remaining is None else min(50, remaining)
+            
+            params = {
+                "key": self.api_key,
+                "channelId": request.channel_id,
+                "part": "snippet",
+                "type": "video",
+                "order": "date",
+                "maxResults": max_results,
+            }
+            
+            if request.published_after:
+                params["publishedAfter"] = request.published_after.isoformat().replace("+00:00", "Z")
+            if request.published_before:
+                params["publishedBefore"] = request.published_before.isoformat().replace("+00:00", "Z")   
+            if page_token:
+                params["pageToken"] = page_token # not relevant for the 1. page, for the rest ensures we send the correct page
+                
+            resp = session.get(base_url, params=params, timeout=30)
+            
+            # the below is an error handler 
+            try:
+                resp.raise_for_status() # for 4xx and 5xx it returns HTTPError
+            except requests.HTTPError as e:
+                try:
+                    # Check if google sends an error message
+                    payload = resp.json()
+                    err = payload.get("error", {})
+                    message = err.get("message") or "Unknown YouTube API error"
+                    errors = err.get("errors") or []
+                    reason = errors[0].get("reason") if errors else None
+                except Exception:
+                    # If not or it fails, set vars to None
+                    payload = None
+                    message = None
+                    reason = None
+                    
+                # Convert different reasons to a readable format
+                if reason in {"quotaExceeded", "dailyLimitExceeded"}:
+                    raise ValueError(
+                        "YouTube API quota exceeded for this project/API key. "
+                        "Try again later or use a different API key/project."
+                    ) from e
+                
+                if reason in {"keyInvalid", "forbidden"}:
+                    raise ValueError(
+                        "YouTube API key is invalid or lacks permission for this request."
+                    ) from e                
+                    
+                if message:
+                    raise ValueError(f"YouTube API error: {message}") from e
+                raise
+            
+            data = resp.json()
+            
+            items = data.get("items", [])
+            for item in items:
+                video_id = item.get("id", {}).get("videoId")
+                snippet = item.get("snippet", {})
+                title = snippet.get("title") or ""
+                published_at_raw = snippet.get("publishedAt")
+                channel_id = snippet.get("channelId")
+                
+                if not video_id:
+                    raise ValueError("YouTube API returned a video without videoId")
+                
+                if not published_at_raw:
+                    raise ValueError("YouTube API returned a video without publishedAt")
+                
+                if channel_id != request.channel_id:
+                    raise ValueError("YouTube API returned different channelId")
+                
+                published_at : Optional[datetime] = None
+                if published_at_raw:
+                    published_at = datetime.fromisoformat(
+                        published_at_raw.replace("Z", "+00:00") # no need to replace Z in python >v3.11 but still keep it if anyone would like to run it on older versions
+                    )
+                
+                yield ChannelVideo(
+                    video_id=video_id,
+                    channel_id=channel_id,
+                    title=title,
+                    published_at=published_at,
+                    view_count=None,
+                    )
+                yielded += 1
+                
+                if request.video_limit is not None and yielded >= request.video_limit: # double-checking (another one is at the beginning) not to waste quota if smth happens
+                    return # can't use break here, return stops the generator   
+                
+            page_token = data.get("nextPageToken")
+            if not page_token:
+                break
+                
+            
+            
