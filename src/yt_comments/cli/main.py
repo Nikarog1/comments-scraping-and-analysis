@@ -36,6 +36,7 @@ load_dotenv()
 
 
 
+logger = logging.getLogger(__name__)
 LOG_FORMAT = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 
 def build_parser() -> argparse.ArgumentParser:
@@ -75,6 +76,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=True,
         help="Overwrite existing bronze file",
     )
+    scrape.set_defaults(func=run_scrape)
     
     # PREPROCESS
     preprocess = subparser.add_parser(
@@ -107,6 +109,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=True,
         help="Overwrite existing silver file",
     )
+    preprocess.set_defaults(func=run_preprocess)
     
     # STATS
     b_stats = subparser.add_parser(
@@ -160,6 +163,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=5000, 
         help="Arrow batch size (default: 5000)"
     )
+    b_stats.set_defaults(func=run_stats)
     
     # TFIDF
     tfidf = subparser.add_parser(
@@ -258,7 +262,8 @@ def build_parser() -> argparse.ArgumentParser:
         default="none", 
         help="Normalize words so related forms (-ing, -ed, -s) collapse into one base form (default: none)\nCurrent supported mods: stem_en"
     )
-    
+    tfidf.set_defaults(func=run_tfidf)
+
     # CORPUS
     corpus = subparser.add_parser(
         "corpus", 
@@ -325,8 +330,10 @@ def build_parser() -> argparse.ArgumentParser:
         default=2, 
         help="Min df of ngram, i.e., in how many documents ngram must appear (default: 2)"
     )
+    corpus.set_defaults(func=run_corpus)
     
     return parser
+
     
 def main(argv: list[str] | None = None) -> int:
     if argv is None:
@@ -337,196 +344,237 @@ def main(argv: list[str] | None = None) -> int:
     
     _configure_logging(args.verbose)
     
-    if args.command == "scrape":
-        video_id = extract_video_id(args.video)
-        
-        api_key = os.getenv("YOUTUBE_API_KEY")
-        if api_key: 
-             client = YouTubeApiClient(api_key=api_key) 
-        else:
-             logging.warning("API key not found. Using StubYouTubeClient.")
-             client = StubYouTubeClient()
-        
-        repo = JSONLCommentsRepository()
-        service = ScrapeCommentsService(client=client, repo=repo)
+    return args.func(args)
 
-        result = service.run(video_id, overwrite=True, limit=args.limit)
 
-        print(f"Saved {result.saved_count} comments to: {result.path}")
-        return 0
+def run_scrape(args: argparse.Namespace) -> int:
+    video_id = extract_video_id(args.video)
+
+    logger.info("Searching for YouTube API key")
+    api_key = os.getenv("YOUTUBE_API_KEY")
+    if api_key: 
+            logger.info("Accessing YouTube API Client")
+            client = YouTubeApiClient(api_key=api_key) 
+    else:
+            logger.warning("API key not found, accessing StubYouTubeClient")
+            client = StubYouTubeClient()
+
+    repo = JSONLCommentsRepository()
+    logger.info("Initializing Scrape Comment Service")
+    service = ScrapeCommentsService(client=client, repo=repo)
+
+    logger.info(f"Running Scrape Comment Service for video: {video_id}")
+    result = service.run(video_id, overwrite=args.overwrite, limit=args.limit)
+    logger.info(f"Completed Scrape Comment Service")
+
+    print(f"Saved {result.saved_count} comments to: {result.path}")
+    return 0
+
+
+def run_preprocess(args: argparse.Namespace) -> int:
+    video_id = extract_video_id(args.video)
+
+    logger.info("Initializing Repos and Text Preprocessor")
+    bronze_repo = JSONLCommentsRepository(args.bronze_dir)
+    silver_repo = ParquetSilverCommentsRepository(args.silver_dir)
+    tp = TextPreprocessor()
+
+    logger.info("Initializing Preprocess Comments Service")
+    service = PreprocessCommentsService(
+        bronze_repo=bronze_repo,
+        silver_repo=silver_repo,
+        text_preprocessor=tp,
+    )
+
+    logger.info(f"Running Preprocess Comments Service for video {video_id}")
+    out_path = service.run(video_id, overwrite=args.overwrite, batch_size=args.batch_size)
+    logger.info(f"Preprocess completed")
+
+    print(f"Saved Silver parquet to: {out_path}")
+    return 0
+
+
+def run_stats(args: argparse.Namespace) -> int:
+    video_id = extract_video_id(args.video)
+
+    data_root = Path(args.data_root)
+
+    logger.info(f"Searching for Silver parquet for video: {video_id}")
+    silver_path = _silver_parquet_path(data_root, video_id)
+    if not silver_path.exists():
+        logger.error(f"Silver file not found: {silver_path}")
+        return 2
+
+    stopwords_hash = str(hash_config(sorted(STOPWORDS[args.lang])))
+
+    logger.info("Initializing Basic Stats Service")
+    svc = BasicStatsService()
+    cfg = BasicStatsConfig(
+        top_n_tokens=args.top_n,
+        min_token_len=args.min_token_len,
+        drop_numeric_tokens=not args.keep_numeric,
+        lowercase=not args.no_lowercase,
+        drop_stopwords=not args.keep_stopwords,
+        stopwords_lang=args.lang,
+        stopwords_hash=stopwords_hash,
+    )
+
+    logger.info(f"Computing Basic Stats for video: {video_id}")     
+    b_stats = svc.compute_for_video(
+        video_id=video_id,
+        silver_parquet_path=str(silver_path),
+        config=cfg,
+        created_at_utc=datetime.now(timezone.utc),
+        batch_size=args.batch_size
+    )
+
+    logger.info(f"Saving Basic Stats") 
+    repo = ParquetBasicStatsRepository(data_root=data_root)
+    repo.save(b_stats)
+    logger.info("Basic stats computation completed") 
+
+    print(f"video_id: {b_stats.video_id}")
+    print(f"rows: {b_stats.row_count} | empty_text: {b_stats.empty_text_count}")
+    print(f"tokens: total={b_stats.total_token_count} | unique={b_stats.unique_token_count}")
+    if b_stats.top_tokens:
+        top_preview = ", ".join(f"{t.token}:{t.count}" for t in b_stats.top_tokens[:10])
+        print(f"top_tokens: {top_preview}")
+    else: 
+        print("top_tokens: (none)")
+    return 0
+
+
+def run_tfidf(args: argparse.Namespace) -> int:
+    video_id = extract_video_id(args.video)
     
-    if args.command == "preprocess":
-        video_id = extract_video_id(args.video)
+    data_root = Path(args.data_root)
+    logger.info(f"Searching for Silver parquet for video: {video_id}")
+    silver_path = _silver_parquet_path(data_root, video_id)
+    if not silver_path.exists():
+        logger.error(f"Silver file not found: {silver_path}")
+        return 2
+        
+    if args.ngram_min < 1:
+        logger.error("--ngram-min must be >= 1")
+        return 2
 
-        bronze_repo = JSONLCommentsRepository(args.bronze_dir)
-        silver_repo = ParquetSilverCommentsRepository(args.silver_dir)
-        tp = TextPreprocessor()
+    if args.ngram_max < args.ngram_min:
+        logger.error("--ngram-max must be >= --ngram-min")
+        return 2
 
-        service = PreprocessCommentsService(
-            bronze_repo=bronze_repo,
-            silver_repo=silver_repo,
-            text_preprocessor=tp,
-        )
-
-        out_path = service.run(video_id, overwrite=args.overwrite, batch_size=args.batch_size)
-        print(f"Saved Silver parquet to: {out_path}")
-        return 0
-
-    if args.command == "stats":
-        video_id = extract_video_id(args.video)
-        
-        data_root = Path(args.data_root)
-        silver_path = _silver_parquet_path(data_root, video_id)
-        if not silver_path.exists():
-            parser.error(f"Silver file not found: {silver_path}")
-        
-        stopwords_hash = str(hash_config(sorted(STOPWORDS[args.lang])))
-        
-        svc = BasicStatsService()
-        cfg = BasicStatsConfig(
-            top_n_tokens=args.top_n,
-            min_token_len=args.min_token_len,
-            drop_numeric_tokens=not args.keep_numeric,
-            lowercase=not args.no_lowercase,
-            drop_stopwords=not args.keep_stopwords,
-            stopwords_lang=args.lang,
-            stopwords_hash=stopwords_hash,
-        )
-                
-        b_stats = svc.compute_for_video(
-            video_id=video_id,
-            silver_parquet_path=str(silver_path),
-            config=cfg,
-            created_at_utc=datetime.now(timezone.utc),
-            batch_size=args.batch_size
-        )
-        
-        repo = ParquetBasicStatsRepository(data_root=data_root)
-        repo.save(b_stats)
-        
-        print(f"video_id: {b_stats.video_id}")
-        print(f"rows: {b_stats.row_count} | empty_text: {b_stats.empty_text_count}")
-        print(f"tokens: total={b_stats.total_token_count} | unique={b_stats.unique_token_count}")
-        if b_stats.top_tokens:
-            top_preview = ", ".join(f"{t.token}:{t.count}" for t in b_stats.top_tokens[:10])
-            print(f"top_tokens: {top_preview}")
-        else:
-            print("top_tokens: (none)")
-        return 0
+    if args.min_ngram_df < 1:
+        logger.error("--min-ngram-df must be >= 1")
+        return 2
     
-    if args.command == "tfidf":
-        video_id = extract_video_id(args.video)
+    if args.use_corpus == True:
+        logger.info(f"Loading global corpus")
+        corpus = ParquetCorpusDfRepository(data_root=data_root).load()
+    else:
+        corpus = None
         
-        data_root = Path(args.data_root)
-        silver_path = _silver_parquet_path(data_root, video_id)
-        if not silver_path.exists():
-            parser.error(f"Silver file not found: {silver_path}")
-            
-        if args.ngram_min < 1:
-            raise SystemExit("--ngram-min must be >= 1")
-        if args.ngram_max < args.ngram_min:
-            raise SystemExit("--ngram-max must be >= --ngram-min")
-        if args.min_ngram_df < 1:
-            raise SystemExit("--min-ngram-df must be >= 1")
-        
-        if args.use_corpus == True:
-            corpus = ParquetCorpusDfRepository(data_root=data_root).load()
-        else:
-            corpus = None
-            
-        stopwords_hash = str(hash_config(sorted(STOPWORDS[args.lang])))
+    stopwords_hash = str(hash_config(sorted(STOPWORDS[args.lang])))
 
-        svc = TfidfService()
-        cfg = TfidfConfig(
-            top_k=args.top_k,
-            min_token_len=args.min_token_len,
-            drop_numeric_tokens=not args.keep_numeric,
-            lowercase=not args.no_lowercase,
-            drop_stopwords=not args.keep_stopwords,
-            stopwords_lang=args.lang,
-            stopwords_hash=stopwords_hash,
-            normalization=args.stemming_mode,
-            min_df=args.min_df,
-            max_df=args.max_df,
-            ngram_range=(args.ngram_min, args.ngram_max),
-            min_ngram_df=args.min_ngram_df,  
-        )
-        
-        tfidf = svc.compute_for_video(
-            video_id=video_id,
-            silver_parquet_path=str(silver_path),
-            config=cfg,
-            created_at_utc=datetime.now(timezone.utc),
-            batch_size=args.batch_size,
-            global_corpus=corpus,
-            unfilter_sentiment=not args.keep_sentiment,  
-        )
-        
-        repo = ParquetTfidfKeywordsRepository(data_root=data_root)
-        repo.save(tfidf)
-        
-        print(f"video_id: {tfidf.video_id}")
-        print(f"rows: {tfidf.row_count} | empty_text: {tfidf.empty_text_count} | docs_used: {tfidf.doc_count_non_empty}")
-        print("top_keywords:")
-        
-        if not tfidf.keywords:
-            print(" (none)")
-        else:
-            for i, kw in enumerate(tfidf.keywords, start=1):
-                print(
-                    f" {i:>2}. {kw.token:<15} "
-                    f"score={kw.score:.3f} "
-                    f"df={kw.df}"
-                )
-        return 0
+    logger.info("Initializing TF-IDF Service")
+    svc = TfidfService()
+    cfg = TfidfConfig(
+        top_k=args.top_k,
+        min_token_len=args.min_token_len,
+        drop_numeric_tokens=not args.keep_numeric,
+        lowercase=not args.no_lowercase,
+        drop_stopwords=not args.keep_stopwords,
+        stopwords_lang=args.lang,
+        stopwords_hash=stopwords_hash,
+        normalization=args.stemming_mode,
+        min_df=args.min_df,
+        max_df=args.max_df,
+        ngram_range=(args.ngram_min, args.ngram_max),
+        min_ngram_df=args.min_ngram_df,  
+    )
     
-    if args.command == "corpus":
-        
-        data_root = Path(args.data_root)
-        # silver_path = _silver_parquet_path(data_root, video_id)
-        # if not silver_path.exists():
-        #     parser.error(f"Silver file not found: {silver_path}")
-            
-        if args.ngram_min < 1:
-            raise SystemExit("--ngram-min must be >= 1")
-        if args.ngram_max < args.ngram_min:
-            raise SystemExit("--ngram-max must be >= --ngram-min")
-        if args.min_ngram_df < 1:
-            raise SystemExit("--min-ngram-df must be >= 1")
+    logger.info(f"Computing TF-IDF for video: {video_id}") 
+    tfidf = svc.compute_for_video(
+        video_id=video_id,
+        silver_parquet_path=str(silver_path),
+        config=cfg,
+        created_at_utc=datetime.now(timezone.utc),
+        batch_size=args.batch_size,
+        global_corpus=corpus,
+        unfilter_sentiment=not args.keep_sentiment,  
+    )
+    
+    logger.info("Saving TF-IDF keywords")
+    repo = ParquetTfidfKeywordsRepository(data_root=data_root)
+    repo.save(tfidf)
+    logger.info("TF-IDF computation completed")
+    
+    print(f"video_id: {tfidf.video_id}")
+    print(f"rows: {tfidf.row_count} | empty_text: {tfidf.empty_text_count} | docs_used: {tfidf.doc_count_non_empty}")
+    print("top_keywords:")
+    
+    if not tfidf.keywords:
+        print(" (none)")
+    else:
+        for i, kw in enumerate(tfidf.keywords, start=1):
+            print(
+                f" {i:>2}. {kw.token:<15} "
+                f"score={kw.score:.3f} "
+                f"df={kw.df}"
+            )
+    return 0
 
-        stopwords_hash = str(hash_config(sorted(STOPWORDS[args.lang])))
+
+def run_corpus(args: argparse.Namespace) -> int:
         
-        corpus = CorpusService(data_root=data_root)
-        cfg = TfidfConfig(
-            drop_numeric_tokens=not args.keep_numeric,
-            lowercase=not args.no_lowercase,
-            drop_stopwords=not args.keep_stopwords,
-            stopwords_lang=args.lang,
-            stopwords_hash=stopwords_hash,
-            min_df=args.min_df,
-            max_df=args.max_df,
-            ngram_range=(args.ngram_min, args.ngram_max),
-            min_ngram_df=args.min_ngram_df,  
-        )
+    data_root = Path(args.data_root)
         
-        result = corpus.build(config=cfg, batch_size=args.batch_size)
-        
-        repo = ParquetCorpusDfRepository(data_root=data_root)
-        repo.save(result)
-        
-        print("corpus_df:")
-        print(f"videos: {result.video_count}")
-        print(f"features: {len(result.tokens)}")
-        
-        return 0
-        
-    return 2
+    if args.ngram_min < 1:
+        logger.error("--ngram-min must be >= 1")
+        return 2
+
+    if args.ngram_max < args.ngram_min:
+        logger.error("--ngram-max must be >= --ngram-min")
+        return 2
+
+    if args.min_ngram_df < 1:
+        logger.error("--min-ngram-df must be >= 1")
+        return 2
+
+    stopwords_hash = str(hash_config(sorted(STOPWORDS[args.lang])))
+    
+    logger.info("Initializing global Corpus Service")
+    corpus = CorpusService(data_root=data_root)
+    cfg = TfidfConfig(
+        drop_numeric_tokens=not args.keep_numeric,
+        lowercase=not args.no_lowercase,
+        drop_stopwords=not args.keep_stopwords,
+        stopwords_lang=args.lang,
+        stopwords_hash=stopwords_hash,
+        min_df=args.min_df,
+        max_df=args.max_df,
+        ngram_range=(args.ngram_min, args.ngram_max),
+        min_ngram_df=args.min_ngram_df,  
+    )
+    
+    logger.info("Building global corpus")
+    result = corpus.build(config=cfg, batch_size=args.batch_size)
+    
+    logger.info("Saving global corpus")
+    repo = ParquetCorpusDfRepository(data_root=data_root)
+    repo.save(result)
+    logger.info("Completed global corpus")
+    
+    print("corpus_df:")
+    print(f"videos: {result.video_count}")
+    print(f"features: {len(result.tokens)}")
+    
+    return 0
 
 
 def _configure_logging(verbose: bool) -> None:
-    level = logging.DEBUG if verbose else logging.INFO
+    level = logging.INFO if verbose else logging.WARNING
     logging.basicConfig(level=level, format=LOG_FORMAT)
-    
+
+
 def _silver_parquet_path(data_root: Path, video_id: str) -> Path:
     return data_root / "silver" / video_id / "comments.parquet"
 
