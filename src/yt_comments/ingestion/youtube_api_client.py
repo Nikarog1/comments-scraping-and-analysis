@@ -129,7 +129,6 @@ class YouTubeApiClient(YouTubeClient):
         - filters by channel_id
         - returns only videos
         - supports published_after / published_before
-        - supports views filtering
         """
         base_url = "https://www.googleapis.com/youtube/v3/search" # commentSearch returns search results, not full results    
         session = requests.Session()
