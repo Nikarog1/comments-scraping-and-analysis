@@ -15,6 +15,8 @@ from yt_comments.analysis.corpus.service import CorpusService
 from yt_comments.analysis.tfidf.models import TfidfConfig
 from yt_comments.analysis.tfidf.service import TfidfService
 
+from yt_comments.ingestion.channel_video_discovery_service import ChannelVideoDiscoveryService
+from yt_comments.ingestion.models import ChannelVideoDiscovery
 from yt_comments.ingestion.scrape_service import ScrapeCommentsService
 from yt_comments.ingestion.video_id_extractor import extract_video_id
 from yt_comments.ingestion.youtube_api_client import YouTubeApiClient
@@ -332,6 +334,33 @@ def build_parser() -> argparse.ArgumentParser:
     )
     corpus.set_defaults(func=run_corpus)
     
+    # DISCOVER_VIDEOS
+    discover_vids = subparser.add_parser(
+        "discover_videos", 
+        help="List available videos on the provided channel"
+    )
+    discover_vids.add_argument(
+        "channel_id", 
+        help="YouTube channel URL, or Web ID, or API ID"
+    )
+    discover_vids.add_argument(
+        "--video-limit", 
+        type=int, 
+        default=100, 
+        help="Maximum number of videos to list"
+    )
+    discover_vids.add_argument(
+        "--published-after", 
+        type=_parse_cli_datetime, 
+        help="Include videos published AFTER the specified date"
+    )
+    discover_vids.add_argument(
+        "--published-before", 
+        type=_parse_cli_datetime, 
+        help="Include videos published BEFORE the specified date"
+    )
+    discover_vids.set_defaults(func=run_discover_vids)
+    
     return parser
 
     
@@ -570,6 +599,43 @@ def run_corpus(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_discover_vids(args: argparse.Namespace) -> int:
+    # future func to convert channel url to api id 
+    logger.info("Searching for YouTube API key")
+    api_key = os.getenv("YOUTUBE_API_KEY")
+    if api_key: 
+            logger.info("Accessing YouTube API Client")
+            client = YouTubeApiClient(api_key=api_key) 
+    else:
+            logger.error("API key not found")
+            return 1
+    
+    request = ChannelVideoDiscovery(
+        channel_id=args.channel_id,
+        published_after=args.published_after,
+        published_before=args.published_before,
+        video_limit=args.video_limit,    
+    )
+    
+    logger.info("Initializing Channel Video Discovery Service")
+    service = ChannelVideoDiscoveryService(client=client)
+    
+    count = 0
+    for video in service.discover_videos(request=request):
+        if video.published_at:
+            date_str = video.published_at.strftime("%Y-%m-%d %H:%M")
+        else:
+            date_str = "N/A"
+        print(f"{date_str} | {video.video_id} | {video.title}")
+        count += 1
+        
+    logger.info("Channel discovery completed")
+    
+    print(f"Total available videos for the given filter: {count}")
+        
+    return 0
+
+
 def _configure_logging(verbose: bool) -> None:
     level = logging.INFO if verbose else logging.WARNING
     logging.basicConfig(level=level, format=LOG_FORMAT)
@@ -577,5 +643,24 @@ def _configure_logging(verbose: bool) -> None:
 
 def _silver_parquet_path(data_root: Path, video_id: str) -> Path:
     return data_root / "silver" / video_id / "comments.parquet"
+
+
+def _parse_cli_datetime(value: str) -> datetime:
+    try:
+        dt = datetime.fromisoformat(value)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(
+            f"Invalid datetime '{value}'. Use ISO format like "
+            "2026-01-01 or 2026-01-01T12:00:00"
+        ) from e
+
+    # If user passed only a date → assume midnight
+    # datetime.fromisoformat already handles this.
+
+    # If timezone missing → assume UTC
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    return dt
 
     
