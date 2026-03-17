@@ -17,6 +17,7 @@ from yt_comments.nlp.stopwords import get_stopwords
 
 _STEMMER = SnowballStemmer("english")
 _TOKEN_RE = re.compile(r"[a-zA-Z0-9_']+")
+_REPEAT_3PLUS_RE = re.compile(r"([a-zA-Z])\1{2,}") # >=3 repeating letters
 
 def hash_config(config: Any) -> str:
     if is_dataclass(config):
@@ -76,6 +77,8 @@ def tokenize(text: str, config: BasicStatsConfig | TfidfConfig) -> Iterable[str]
     for m in _TOKEN_RE.finditer(text): # finditer used since it returns a generator in comparison to findall
         tok = m.group(0) # returns the matched string
         
+        tok = normalize_repeating_letters(tok)
+        
         if len(tok) < config.min_token_len:
             continue
         if config.drop_numeric_tokens and tok.isdigit():
@@ -110,3 +113,6 @@ def normalize_token(token: str, *, mode: str) -> str:
         return _STEMMER.stem(token)
     
     raise ValueError(f"Unsupported normalization mode: {mode}")
+
+def normalize_repeating_letters(token: str) -> str:
+    return _REPEAT_3PLUS_RE.sub(r"\1\1", token)
