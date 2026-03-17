@@ -18,6 +18,7 @@ from yt_comments.nlp.stopwords import get_stopwords
 _STEMMER = SnowballStemmer("english")
 _TOKEN_RE = re.compile(r"[a-zA-Z0-9_']+")
 _REPEAT_3PLUS_RE = re.compile(r"([a-zA-Z])\1{2,}") # >=3 repeating letters
+_REPEAT_PAIR_3PLUS_RE = re.compile(r"^([a-zA-Z]{2})\1{2,}") # >=3 repeating pairs, the whole string contains repeated pairs only
 
 def hash_config(config: Any) -> str:
     if is_dataclass(config):
@@ -85,6 +86,8 @@ def tokenize(text: str, config: BasicStatsConfig | TfidfConfig) -> Iterable[str]
             continue
         if stopwords and tok in stopwords:
             continue
+        if is_repeating_pair_token(tok):
+            continue
         
         tok = normalize_token(tok, mode=config.normalization)
         yield tok
@@ -116,3 +119,6 @@ def normalize_token(token: str, *, mode: str) -> str:
 
 def normalize_repeating_letters(token: str) -> str:
     return _REPEAT_3PLUS_RE.sub(r"\1\1", token)
+
+def is_repeating_pair_token(token: str) -> bool:
+    return bool(_REPEAT_PAIR_3PLUS_RE.fullmatch(token)) # fullmatch used to consistency that the token should contain repeating pairs only
