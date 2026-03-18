@@ -10,7 +10,7 @@ from yt_comments.ingestion.models import ChannelVideo, ChannelVideoDiscovery
 @dataclass(slots=True)
 class ChannelVideoDiscoveryResult:
     video_count: int
-    videos: Iterable[ChannelVideo]
+    videos: list[ChannelVideo]
     
 
 @dataclass(slots=True)
