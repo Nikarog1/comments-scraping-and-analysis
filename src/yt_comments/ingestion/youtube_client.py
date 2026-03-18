@@ -18,8 +18,7 @@ class YouTubeClient(Protocol):
 @dataclass(slots=True)
 class StubYouTubeClient:
     """
-    Temporary client used to prove wiring (CLI -> ingestion -> storage).
-    Replace with real YouTube Data API client later.
+    Temporary client for testing and / or if API key isn't provided
     """
 
     fixed_now: Optional[datetime] = None
