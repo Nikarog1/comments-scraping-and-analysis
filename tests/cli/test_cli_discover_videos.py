@@ -7,17 +7,13 @@ from yt_comments.ingestion.channel_video_discovery_client import StubChannelVide
 def test_cli_discover_videos(capsys):
     
     with (
-        patch.dict("os.environ", {"YOUTUBE_API_KEY": "test-key"}),
-        patch(
-            "yt_comments.cli.main.YouTubeApiClient",
-            return_value=StubChannelVideoDiscoveryClient()
-        )
+        patch.dict("os.environ", {}, clear=True),
     ):
         
         exit_code = main(
             [
                 "discover_videos",
-                "chan123",
+                "@chan123",
                 "--limit",
                 "3",
                 "--published-after",
