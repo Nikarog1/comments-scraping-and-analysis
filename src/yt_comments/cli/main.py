@@ -15,6 +15,7 @@ from yt_comments.analysis.corpus.service import CorpusService
 from yt_comments.analysis.tfidf.models import TfidfConfig
 from yt_comments.analysis.tfidf.service import TfidfService
 
+from yt_comments.ingestion.channel_ref_parser import parse_channel_ref
 from yt_comments.ingestion.channel_video_discovery_client import StubChannelVideoDiscoveryClient
 from yt_comments.ingestion.channel_video_discovery_service import ChannelVideoDiscoveryService
 from yt_comments.ingestion.models import ChannelVideoDiscovery
@@ -342,7 +343,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     discover_vids.add_argument(
         "channel_id", 
-        help="YouTube channel URL, or Web ID, or API ID"
+        help="YouTube channel reference (channel ID, @handle, or URL)"
     )
     discover_vids.add_argument(
         "--limit", 
@@ -601,18 +602,24 @@ def run_corpus(args: argparse.Namespace) -> int:
 
 
 def run_discover_vids(args: argparse.Namespace) -> int:
-    # future func to convert channel url to api id 
     logger.info("Searching for YouTube API key")
     api_key = os.getenv("YOUTUBE_API_KEY")
+    
+    channel_id = args.channel_id
+
     if api_key: 
             logger.info("Accessing YouTube API Client")
             client = YouTubeApiClient(api_key=api_key) 
+            logger.info("Analyzing provided channel reference")
+            parsed_channel_id = parse_channel_ref(args.channel_id)
+            channel_id = client.resolve_channel_id(parsed_channel_id)
+            
     else:
             logger.warning("API key not found, accessing StubChannelVideoDiscoveryClient (not real client)")
             client = StubChannelVideoDiscoveryClient()
     
     request = ChannelVideoDiscovery(
-        channel_id=args.channel_id,
+        channel_id=channel_id,
         published_after=args.published_after,
         published_before=args.published_before,
         limit=args.limit,    
