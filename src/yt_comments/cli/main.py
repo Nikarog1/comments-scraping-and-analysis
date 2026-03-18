@@ -15,6 +15,7 @@ from yt_comments.analysis.corpus.service import CorpusService
 from yt_comments.analysis.tfidf.models import TfidfConfig
 from yt_comments.analysis.tfidf.service import TfidfService
 
+from yt_comments.ingestion.channel_video_discovery_client import StubChannelVideoDiscoveryClient
 from yt_comments.ingestion.channel_video_discovery_service import ChannelVideoDiscoveryService
 from yt_comments.ingestion.models import ChannelVideoDiscovery
 from yt_comments.ingestion.scrape_service import ScrapeCommentsService
@@ -385,7 +386,7 @@ def run_scrape(args: argparse.Namespace) -> int:
             logger.info("Accessing YouTube API Client")
             client = YouTubeApiClient(api_key=api_key) 
     else:
-            logger.warning("API key not found, accessing StubYouTubeClient")
+            logger.warning("API key not found, accessing StubYouTubeClient (not real client)")
             client = StubYouTubeClient()
 
     repo = JSONLCommentsRepository()
@@ -607,8 +608,8 @@ def run_discover_vids(args: argparse.Namespace) -> int:
             logger.info("Accessing YouTube API Client")
             client = YouTubeApiClient(api_key=api_key) 
     else:
-            logger.error("API key not found")
-            return 1
+            logger.warning("API key not found, accessing StubChannelVideoDiscoveryClient (not real client)")
+            client = StubChannelVideoDiscoveryClient()
     
     request = ChannelVideoDiscovery(
         channel_id=args.channel_id,
@@ -618,20 +619,19 @@ def run_discover_vids(args: argparse.Namespace) -> int:
     )
     
     logger.info("Initializing Channel Video Discovery Service")
-    service = ChannelVideoDiscoveryService(client=client)
+    service = ChannelVideoDiscoveryService(client=client, request=request)
+    result = service.run()  
+    logger.info("Channel discovery completed")
     
-    count = 0
-    for video in service.discover_videos(request=request):
+    logger.info("Printing results")
+    for video in result.videos:
         if video.published_at:
             date_str = video.published_at.strftime("%Y-%m-%d %H:%M")
         else:
             date_str = "N/A"
         print(f"{date_str} | {video.video_id} | {video.title}")
-        count += 1
-        
-    logger.info("Channel discovery completed")
-    
-    print(f"Total available videos for the given filter: {count}")
+
+    print(f"Total available videos for the given filter: {result.video_count}")
         
     return 0
 
