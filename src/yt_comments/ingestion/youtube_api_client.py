@@ -6,6 +6,7 @@ from typing import Iterable, Optional
 
 import requests
 
+from yt_comments.ingestion.channel_ref_parser import ParsedChannelRef
 from yt_comments.ingestion.models import Comment, ChannelVideo, ChannelVideoDiscovery
 from yt_comments.ingestion.youtube_client import YouTubeClient
 
@@ -38,7 +39,6 @@ class YouTubeApiClient(YouTubeClient):
                 
             resp = session.get(base_url, params=params, timeout=30)
             
-            # the below is an error handler 
             try:
                 resp.raise_for_status() # for 4xx and 5xx it returns HTTPError
             except requests.HTTPError as e:
@@ -161,7 +161,6 @@ class YouTubeApiClient(YouTubeClient):
                 
             resp = session.get(base_url, params=params, timeout=30)
             
-            # the below is an error handler 
             try:
                 resp.raise_for_status() # for 4xx and 5xx it returns HTTPError
             except requests.HTTPError as e:
@@ -234,6 +233,57 @@ class YouTubeApiClient(YouTubeClient):
             page_token = data.get("nextPageToken")
             if not page_token:
                 break
+            
+    def resolve_channel_id(self, ref: ParsedChannelRef) -> str:
+        base_url = "https://www.googleapis.com/youtube/v3/channels"
+        session = requests.Session()
+        
+        if ref.kind == "channel_id":
+            return ref.value
+        
+        params = {
+            "key": self.api_key,
+            "part": "id",
+        }
+        
+        if ref.kind == "handle":
+            # youtube expects handle without '@' 
+            params["forHandle"] = ref.value.lstrip("@")
+            
+        elif ref.kind == "username":
+            params["forUsername"] = ref.value
+            
+        else:
+            raise ValueError(f"Unsupported channel ref kind: {ref.kind}")
+        
+        resp = session.get(base_url, params=params, timeout=30)
+        
+        try:
+            resp.raise_for_status() # for 4xx and 5xx it returns HTTPError
+            
+        except requests.HTTPError as e:
+            try:
+                payload = resp.json()
+                err = payload.get("error", {})
+                message = err.get("message") or "Unknown YouTube API error"
+            except Exception:
+                message = None
+        
+            if message:
+                raise ValueError(f"YouTube API error: {message}") from e
+            raise
+        
+        data = resp.json()
+        items = data.get("items", [])
+        
+        if not items:
+            raise ValueError(f"Channel not found for: {ref.value}")
+        
+        channel_id = items[0].get("id")
+        if not channel_id:
+            raise ValueError(f"YouTube API returned channel without id")
+        
+        return channel_id
                 
             
             
