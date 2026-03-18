@@ -230,7 +230,7 @@ def test_discover_videos_single_page():
     request = ChannelVideoDiscovery(
         channel_id="chan123",
         published_after=datetime(2026, 1, 1, tzinfo=timezone.utc),
-        video_limit=10,
+        limit=10,
         )
     
     with patch("yt_comments.ingestion.youtube_api_client.requests.Session", return_value=mock_session):
@@ -303,7 +303,7 @@ def test_discover_videos_paginates_across_two_pages():
     request = ChannelVideoDiscovery(
         channel_id="chan123",
         published_after=datetime(2026, 1, 1, tzinfo=timezone.utc),
-        video_limit=10,
+        limit=10,
         )
     
     with patch("yt_comments.ingestion.youtube_api_client.requests.Session", return_value=mock_session):
@@ -362,7 +362,7 @@ def test_discover_videos_respects_video_limit():
     request = ChannelVideoDiscovery(
         channel_id="chan123",
         published_after=datetime(2026, 1, 1, tzinfo=timezone.utc),
-        video_limit=2,
+        limit=2,
         )
     
     with patch("yt_comments.ingestion.youtube_api_client.requests.Session", return_value=mock_session):
@@ -399,4 +399,35 @@ def test_discover_videos_quota_exceeded_error():
     ):
         with pytest.raises(ValueError, match="quota exceeded"):
             list(client.discover_videos(request))
+            
+def test_discover_videos_passes_published_after_and_before_params():
+    client = YouTubeApiClient(api_key="test-key")
+
+    response = Mock()
+    response.raise_for_status.return_value = None
+    response.json.return_value = {"items": []}
+
+    mock_session = Mock()
+    mock_session.get.return_value = response
+
+    request = ChannelVideoDiscovery(
+        channel_id="chan123",
+        published_after=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        published_before=datetime(2026, 2, 1, tzinfo=timezone.utc),
+        limit=10,
+    )
+
+    with patch(
+        "yt_comments.ingestion.youtube_api_client.requests.Session",
+        return_value=mock_session,
+    ):
+        videos = list(client.discover_videos(request))
+
+    assert videos == []
+
+    mock_session.get.assert_called_once()
+    _, kwargs = mock_session.get.call_args
+
+    assert kwargs["params"]["publishedAfter"] == "2026-01-01T00:00:00Z"
+    assert kwargs["params"]["publishedBefore"] == "2026-02-01T00:00:00Z"
     

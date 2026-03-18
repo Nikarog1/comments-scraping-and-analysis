@@ -345,7 +345,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="YouTube channel URL, or Web ID, or API ID"
     )
     discover_vids.add_argument(
-        "--video-limit", 
+        "--limit", 
         type=int, 
         default=100, 
         help="Maximum number of videos to list"
@@ -615,7 +615,7 @@ def run_discover_vids(args: argparse.Namespace) -> int:
         channel_id=args.channel_id,
         published_after=args.published_after,
         published_before=args.published_before,
-        video_limit=args.video_limit,    
+        limit=args.limit,    
     )
     
     logger.info("Initializing Channel Video Discovery Service")

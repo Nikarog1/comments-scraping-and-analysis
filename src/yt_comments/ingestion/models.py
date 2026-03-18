@@ -29,7 +29,5 @@ class ChannelVideoDiscovery:
     channel_id: str
     published_after: Optional[datetime] = None
     published_before: Optional[datetime] = None
-    min_views: Optional[int] = None
-    max_views: Optional[int] = None
-    video_limit: Optional[int] = None
+    limit: Optional[int] = None
     

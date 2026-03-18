@@ -137,7 +137,7 @@ class YouTubeApiClient(YouTubeClient):
         yielded = 0
         
         while True:
-            remaining = None if request.video_limit is None else request.video_limit - yielded # how many more vids are still needed 
+            remaining = None if request.limit is None else request.limit - yielded # how many more vids are still needed 
             if remaining is not None and remaining <= 0: # double-checking (another one is right after generator) not to waste quota if smth happens
                 break
             
@@ -228,7 +228,7 @@ class YouTubeApiClient(YouTubeClient):
                     )
                 yielded += 1
                 
-                if request.video_limit is not None and yielded >= request.video_limit: # double-checking (another one is at the beginning) not to waste quota if smth happens
+                if request.limit is not None and yielded >= request.limit: # double-checking (another one is at the beginning) not to waste quota if smth happens
                     return # can't use break here, return stops the generator   
                 
             page_token = data.get("nextPageToken")

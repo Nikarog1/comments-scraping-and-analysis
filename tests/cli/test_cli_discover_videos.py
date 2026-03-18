@@ -18,7 +18,7 @@ def test_cli_discover_videos(capsys):
             [
                 "discover_videos",
                 "chan123",
-                "--video-limit",
+                "--limit",
                 "3",
                 "--published-after",
                 "2026-01-01",
