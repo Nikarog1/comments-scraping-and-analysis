@@ -12,7 +12,7 @@ def test_cli_discover_videos(capsys):
         
         exit_code = main(
             [
-                "discover_videos",
+                "discover-videos",
                 "@chan123",
                 "--limit",
                 "3",
