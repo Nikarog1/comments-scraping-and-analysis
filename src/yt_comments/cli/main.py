@@ -717,18 +717,24 @@ def run_scrape_channel(args: argparse.Namespace) -> int:
     
     logger.info("Scraping individual videos")
     comments_count = 0
+    errors = 0
     for video in videos.videos:
-        result = _scrape_video(
-              video_id=video.video_id,
-              client=client,
-              repo=repo,
-              limit=args.comments_limit,
-              overwrite=args.overwrite
-        )
-        comments_count += result.saved_count
-        print(f"{video.video_id} | title={video.title} | comments={result.saved_count} | path={result.path}")
+        try:
+            result = _scrape_video(
+                video_id=video.video_id,
+                client=client,
+                repo=repo,
+                limit=args.comments_limit,
+                overwrite=args.overwrite
+            )
+            comments_count += result.saved_count
+            print(f"{video.video_id} | title={video.title} | comments={result.saved_count} | path={result.path}")
+        except Exception as e:
+             errors += 1
+             print(f"Failed to scrape | video_id={video.video_id} | error={e}")
+             
     logger.info("Scraping completed")
-    print(f"TOTAL | videos={videos.video_count} | comments={comments_count}")
+    print(f"TOTAL | videos={videos.video_count} | comments={comments_count} | errors={errors}")
     
     return 0
 
