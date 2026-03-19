@@ -338,11 +338,11 @@ def build_parser() -> argparse.ArgumentParser:
     
     # DISCOVER_VIDEOS
     discover_vids = subparser.add_parser(
-        "discover_videos", 
+        "discover-videos", 
         help="List available videos on the provided channel"
     )
     discover_vids.add_argument(
-        "channel_id", 
+        "channelId", 
         help="YouTube channel reference (channel ID, @handle, or URL)"
     )
     discover_vids.add_argument(
@@ -605,13 +605,13 @@ def run_discover_vids(args: argparse.Namespace) -> int:
     logger.info("Searching for YouTube API key")
     api_key = os.getenv("YOUTUBE_API_KEY")
     
-    channel_id = args.channel_id
+    channel_id = args.channelId
 
     if api_key: 
             logger.info("Accessing YouTube API Client")
             client = YouTubeApiClient(api_key=api_key) 
             logger.info("Analyzing provided channel reference")
-            parsed_channel_id = parse_channel_ref(args.channel_id)
+            parsed_channel_id = parse_channel_ref(args.channelId)
             channel_id = client.resolve_channel_id(parsed_channel_id)
             
     else:
