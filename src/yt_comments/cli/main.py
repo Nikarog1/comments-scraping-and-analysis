@@ -363,6 +363,33 @@ def build_parser() -> argparse.ArgumentParser:
     )
     discover_vids.set_defaults(func=run_discover_vids)
     
+    # SCRAPE-CHANNEL
+    # scrape_channel = subparser.add_parser(
+    #     "scrape-channel", 
+    #     help="Scrape comments from videos from a YouTube channel"
+    # )
+    # scrape_channel.add_argument(
+    #     "channelId", 
+    #     help="YouTube channel reference (channel ID, @handle, or URL)"
+    # )
+    # scrape_channel.add_argument(
+    #     "--limit", 
+    #     type=int, 
+    #     default=100, 
+    #     help="Maximum number of videos to list"
+    # )
+    # scrape_channel.add_argument(
+    #     "--published-after", 
+    #     type=_parse_cli_datetime, 
+    #     help="Include videos published AFTER the specified date"
+    # )
+    # scrape_channel.add_argument(
+    #     "--published-before", 
+    #     type=_parse_cli_datetime, 
+    #     help="Include videos published BEFORE the specified date"
+    # )
+    # scrape_channel.set_defaults(func=run_scrape_channel)
+    
     return parser
 
     
@@ -391,12 +418,9 @@ def run_scrape(args: argparse.Namespace) -> int:
             client = StubYouTubeClient()
 
     repo = JSONLCommentsRepository()
-    logger.info("Initializing Scrape Comment Service")
-    service = ScrapeCommentsService(client=client, repo=repo)
-
-    logger.info(f"Running Scrape Comment Service for video: {video_id}")
-    result = service.run(video_id, overwrite=args.overwrite, limit=args.limit)
-    logger.info(f"Completed Scrape Comment Service")
+    logger.info(f"Initializing and Running scrape comment service for video: {video_id}")
+    result = _scrape_videos(video_id=video_id, client=client, repo=repo, limit=args.limit, overwrite=args.overwrite)
+    logger.info(f"Scrape comment service completed")
 
     print(f"Saved {result.saved_count} comments to: {result.path}")
     return 0
@@ -643,6 +667,39 @@ def run_discover_vids(args: argparse.Namespace) -> int:
     return 0
 
 
+# def run_scrape_channel(args: argparse.Namespace) -> int:
+#     logger.info("Searching for YouTube API key")
+#     api_key = os.getenv("YOUTUBE_API_KEY")
+    
+#     channel_id = args.channelId
+
+#     if api_key: 
+#             logger.info("Accessing YouTube API Client")
+#             client = YouTubeApiClient(api_key=api_key) 
+#             logger.info("Analyzing provided channel reference")
+#             parsed_channel_id = parse_channel_ref(args.channelId)
+#             channel_id = client.resolve_channel_id(parsed_channel_id)
+            
+#     else:
+#             logger.warning("API key not found, accessing StubChannelVideoDiscoveryClient (not real client)")
+#             client = StubChannelVideoDiscoveryClient()
+    
+#     request = ChannelVideoDiscovery(
+#         channel_id=channel_id,
+#         published_after=args.published_after,
+#         published_before=args.published_before,
+#         limit=args.limit,    
+#     )
+    
+#     logger.info("Initializing Channel Video Discovery Service")
+#     service = ChannelVideoDiscoveryService(client=client, request=request)
+#     result = service.run()  
+#     logger.info("Channel discovery completed")
+    
+#     for video in result.videos:
+#          run_scrape(video.video_id)
+
+
 def _configure_logging(verbose: bool) -> None:
     level = logging.INFO if verbose else logging.WARNING
     logging.basicConfig(level=level, format=LOG_FORMAT)
@@ -670,4 +727,13 @@ def _parse_cli_datetime(value: str) -> datetime:
 
     return dt
 
-    
+def _scrape_videos(
+          *,
+          video_id: str,
+          client: YouTubeApiClient | StubYouTubeClient,
+          repo: JSONLCommentsRepository,
+          limit: int | None,
+          overwrite: bool,
+):
+     service = ScrapeCommentsService(client=client, repo=repo)
+     return service.run(video_id, overwrite=overwrite, limit=limit)
