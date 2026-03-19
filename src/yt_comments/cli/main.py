@@ -72,7 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
     scrape.add_argument(
         "--bronze-dir", 
         default="data/bronze", 
-        help="Bronze output directory"
+        help="Bronze output directory (default: 'data/bronze')"
     )
     scrape.add_argument(
         "--overwrite",
@@ -94,12 +94,12 @@ def build_parser() -> argparse.ArgumentParser:
     preprocess.add_argument(
         "--bronze-dir", 
         default="data/bronze", 
-        help="Bronze input directory"
+        help="Bronze output directory (default: 'data/bronze')"
         )
     preprocess.add_argument(
         "--silver-dir", 
         default="data/silver", 
-        help="Silver output directory"
+        help="Silver output directory (default: 'data/silver)"
         )
     preprocess.add_argument(
         "--batch-size", 
@@ -364,31 +364,48 @@ def build_parser() -> argparse.ArgumentParser:
     discover_vids.set_defaults(func=run_discover_vids)
     
     # SCRAPE-CHANNEL
-    # scrape_channel = subparser.add_parser(
-    #     "scrape-channel", 
-    #     help="Scrape comments from videos from a YouTube channel"
-    # )
-    # scrape_channel.add_argument(
-    #     "channelId", 
-    #     help="YouTube channel reference (channel ID, @handle, or URL)"
-    # )
-    # scrape_channel.add_argument(
-    #     "--limit", 
-    #     type=int, 
-    #     default=100, 
-    #     help="Maximum number of videos to list"
-    # )
-    # scrape_channel.add_argument(
-    #     "--published-after", 
-    #     type=_parse_cli_datetime, 
-    #     help="Include videos published AFTER the specified date"
-    # )
-    # scrape_channel.add_argument(
-    #     "--published-before", 
-    #     type=_parse_cli_datetime, 
-    #     help="Include videos published BEFORE the specified date"
-    # )
-    # scrape_channel.set_defaults(func=run_scrape_channel)
+    scrape_channel = subparser.add_parser(
+        "scrape-channel", 
+        help="Scrape comments from videos from a YouTube channel"
+    )
+    scrape_channel.add_argument(
+        "channelId", 
+        help="YouTube channel reference (channel ID, @handle, or URL)"
+    )
+    scrape_channel.add_argument(
+        "--video-limit", 
+        type=int, 
+        default=100, 
+        help="Maximum number of videos to list"
+    )
+    scrape_channel.add_argument(
+        "--comments-limit", 
+        type=int, 
+        default=5000, 
+        help="Maximum number of comments to fetch from each video"
+    )
+    scrape_channel.add_argument(
+        "--published-after", 
+        type=_parse_cli_datetime, 
+        help="Include videos published AFTER the specified date"
+    )
+    scrape_channel.add_argument(
+        "--published-before", 
+        type=_parse_cli_datetime, 
+        help="Include videos published BEFORE the specified date"
+    )
+    scrape_channel.add_argument(
+        "--bronze-dir", 
+        default="data/bronze", 
+        help="Bronze output directory (default: 'data/bronze')"
+    )
+    scrape_channel.add_argument(
+        "--overwrite",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Overwrite existing bronze file",
+    )
+    scrape_channel.set_defaults(func=run_scrape_channel)
     
     return parser
 
@@ -417,9 +434,9 @@ def run_scrape(args: argparse.Namespace) -> int:
             logger.warning("API key not found, accessing StubYouTubeClient (not real client)")
             client = StubYouTubeClient()
 
-    repo = JSONLCommentsRepository()
+    repo = JSONLCommentsRepository(data_dir=args.bronze_dir)
     logger.info(f"Initializing and Running scrape comment service for video: {video_id}")
-    result = _scrape_videos(video_id=video_id, client=client, repo=repo, limit=args.limit, overwrite=args.overwrite)
+    result = _scrape_video(video_id=video_id, client=client, repo=repo, limit=args.limit, overwrite=args.overwrite)
     logger.info(f"Scrape comment service completed")
 
     print(f"Saved {result.saved_count} comments to: {result.path}")
@@ -662,43 +679,58 @@ def run_discover_vids(args: argparse.Namespace) -> int:
             date_str = "N/A"
         print(f"{date_str} | {video.video_id} | {video.title}")
 
-    print(f"Total available videos for the given filter: {result.video_count}")
+    print(f"Total videos={result.video_count}")
         
     return 0
 
 
-# def run_scrape_channel(args: argparse.Namespace) -> int:
-#     logger.info("Searching for YouTube API key")
-#     api_key = os.getenv("YOUTUBE_API_KEY")
+def run_scrape_channel(args: argparse.Namespace) -> int:
+    logger.info("Searching for YouTube API key")
+    api_key = os.getenv("YOUTUBE_API_KEY")
     
-#     channel_id = args.channelId
+    channel_id = args.channelId
 
-#     if api_key: 
-#             logger.info("Accessing YouTube API Client")
-#             client = YouTubeApiClient(api_key=api_key) 
-#             logger.info("Analyzing provided channel reference")
-#             parsed_channel_id = parse_channel_ref(args.channelId)
-#             channel_id = client.resolve_channel_id(parsed_channel_id)
+    if api_key: 
+            logger.info("Accessing YouTube API Client")
+            client = YouTubeApiClient(api_key=api_key) 
+            logger.info("Analyzing provided channel reference")
+            parsed_channel_id = parse_channel_ref(args.channelId)
+            channel_id = client.resolve_channel_id(parsed_channel_id)
             
-#     else:
-#             logger.warning("API key not found, accessing StubChannelVideoDiscoveryClient (not real client)")
-#             client = StubChannelVideoDiscoveryClient()
+    else:
+            logger.error("API key not found")
+            return 2
     
-#     request = ChannelVideoDiscovery(
-#         channel_id=channel_id,
-#         published_after=args.published_after,
-#         published_before=args.published_before,
-#         limit=args.limit,    
-#     )
+    request = ChannelVideoDiscovery(
+        channel_id=channel_id,
+        published_after=args.published_after,
+        published_before=args.published_before,
+        limit=args.video_limit,    
+    )
     
-#     logger.info("Initializing Channel Video Discovery Service")
-#     service = ChannelVideoDiscoveryService(client=client, request=request)
-#     result = service.run()  
-#     logger.info("Channel discovery completed")
+    logger.info("Initializing Channel Video Discovery Service")
+    service = ChannelVideoDiscoveryService(client=client, request=request)
+    videos = service.run()  
+    logger.info("Channel discovery completed")
     
-#     for video in result.videos:
-#          run_scrape(video.video_id)
-
+    repo = JSONLCommentsRepository(data_dir=args.bronze_dir)
+    
+    logger.info("Scraping individual videos")
+    comments_count = 0
+    for video in videos.videos:
+        result = _scrape_video(
+              video_id=video.video_id,
+              client=client,
+              repo=repo,
+              limit=args.comments_limit,
+              overwrite=args.overwrite
+        )
+        comments_count += result.saved_count
+        print(f"{video.video_id} | title={video.title} | comments={result.saved_count} | path={result.path}")
+    logger.info("Scraping completed")
+    print(f"TOTAL | videos={videos.video_count} | comments={comments_count}")
+    
+    return 0
 
 def _configure_logging(verbose: bool) -> None:
     level = logging.INFO if verbose else logging.WARNING
@@ -727,7 +759,7 @@ def _parse_cli_datetime(value: str) -> datetime:
 
     return dt
 
-def _scrape_videos(
+def _scrape_video(
           *,
           video_id: str,
           client: YouTubeApiClient | StubYouTubeClient,
