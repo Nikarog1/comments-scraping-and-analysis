@@ -5,8 +5,8 @@ from datetime import datetime
 @dataclass(frozen=True, slots=True)
 class ChannelRunSummary:
     channel_id: str
-    started_at_utc: datetime | None
-    finished_at_utc: datetime | None
+    started_at_utc: datetime
+    finished_at_utc: datetime
     video_count: int
     comment_count: int
     error_count: int
