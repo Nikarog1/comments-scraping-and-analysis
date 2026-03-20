@@ -70,7 +70,7 @@ def test_cli_scrape_channel(capsys, tmp_path: Path):
             return_value=mock_discovery_service,
         ), 
         patch(
-            "yt_comments.cli.main._scrape_videos",
+            "yt_comments.cli.main._scrape_video",
             side_effect=[scrape_result_1, scrape_result_2, scrape_result_3],
         ) as mock_scrape_videos
     ):
@@ -82,6 +82,8 @@ def test_cli_scrape_channel(capsys, tmp_path: Path):
                 "3",
                 "--bronze-dir",
                 str(tmp_path / "bronze"),
+                "--data-root",
+                str(tmp_path),
             ]
         )
         
@@ -92,7 +94,7 @@ def test_cli_scrape_channel(capsys, tmp_path: Path):
     assert "v1 | title=Example video 1 | comments=10" in out
     assert "v2 | title=Example video 2 | comments=1" in out
     assert "v3 | title=Example video 3 | comments=7" in out
-    assert "TOTAL | videos=3 | comments=18" in out
+    assert "TOTAL | videos=3 | comments=18 | errors=0" in out
     
     mock_client.resolve_channel_id.assert_called_once()
     
