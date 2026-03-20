@@ -1,13 +1,54 @@
-from unittest.mock import patch
+from datetime import datetime, timezone
+from unittest.mock import Mock, patch
 
 from yt_comments.cli.main import main
-from yt_comments.ingestion.channel_video_discovery_client import StubChannelVideoDiscoveryClient
+from yt_comments.ingestion.channel_video_discovery_service import ChannelVideoDiscoveryResult
+from yt_comments.ingestion.models import ChannelVideo
 
 
 def test_cli_discover_videos(capsys):
     
+    discovered_videos = [
+        ChannelVideo(
+            video_id="v1",
+            channel_id="UC_test",
+            title="Example video 1",
+            published_at=datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
+        ),
+        ChannelVideo(
+            video_id="v2",
+            channel_id="UC_test",
+            title="Example video 2",
+            published_at=datetime(2026, 1, 2, 10, 45, tzinfo=timezone.utc)
+        ),
+        ChannelVideo(
+            video_id="v3",
+            channel_id="UC_test",
+            title="Example video 3",
+            published_at=datetime(2026, 2, 1, 15, 5, tzinfo=timezone.utc)
+        ),
+    ]
+    discovered_result = ChannelVideoDiscoveryResult(
+        video_count=len(discovered_videos),
+        videos=discovered_videos,
+    )
+
+    mock_client = Mock()
+    mock_client.resolve_channel_id.return_value = "UC_test"
+    
+    mock_discovery_service = Mock()
+    mock_discovery_service.run.return_value = discovered_result
+
     with (
-        patch.dict("os.environ", {}, clear=True),
+        patch.dict("os.environ", {"YOUTUBE_API_KEY": "test-key"}), 
+        patch(
+            "yt_comments.cli.main.YouTubeApiClient",
+            return_value=mock_client,
+        ), 
+        patch(
+            "yt_comments.cli.main.ChannelVideoDiscoveryService",
+            return_value=mock_discovery_service,
+        ), 
     ):
         
         exit_code = main(
