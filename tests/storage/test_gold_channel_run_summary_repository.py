@@ -11,6 +11,7 @@ def test_channel_run_summary_repository_save_creates_timestamped_json(tmp_path: 
         channel_id="chan123",
         started_at_utc=datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
         finished_at_utc=datetime(2026, 1, 1, 12, 1, 30, tzinfo=timezone.utc),
+        video_ids=("v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10"),
         video_count=10,
         comment_count=100,
         error_count=5,
