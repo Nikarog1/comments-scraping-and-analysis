@@ -465,19 +465,19 @@ def main(argv: list[str] | None = None) -> int:
 def run_scrape(args: argparse.Namespace) -> int:
     video_id = extract_video_id(args.video)
 
-    logger.info("Searching for YouTube API key")
+    logger.info("Looking up YouTube API key")
     api_key = os.getenv("YOUTUBE_API_KEY")
     if api_key: 
-            logger.info("Accessing YouTube API Client")
+            logger.info("Using YouTube API Client")
             client = YouTubeApiClient(api_key=api_key) 
     else:
-            logger.warning("API key not found, accessing StubYouTubeClient (not real client)")
-            client = StubYouTubeClient()
+            logger.error("YouTube API key not found")
+            return 2
 
     repo = JSONLCommentsRepository(data_dir=args.bronze_dir)
-    logger.info(f"Initializing and Running scrape comment service for video: {video_id}")
+    logger.info("Starting comment scrape | video_id=%s", video_id)
     result = _scrape_video(video_id=video_id, client=client, repo=repo, limit=args.limit, overwrite=args.overwrite)
-    logger.info(f"Scrape comment service completed")
+    logger.info("Comment scrape completed | video_id=%s saved_count=%s path=%s", video_id, result.saved_count, result.path)
 
     print(f"Saved {result.saved_count} comments to: {result.path}")
     return 0
@@ -486,21 +486,21 @@ def run_scrape(args: argparse.Namespace) -> int:
 def run_preprocess(args: argparse.Namespace) -> int:
     video_id = extract_video_id(args.video)
 
-    logger.info("Initializing Repos and Text Preprocessor")
+    logger.info("Initializing repositories and text preprocessor")
     bronze_repo = JSONLCommentsRepository(args.bronze_dir)
     silver_repo = ParquetSilverCommentsRepository(args.silver_dir)
     tp = TextPreprocessor()
 
-    logger.info("Initializing Preprocess Comments Service")
+    logger.info("Initializing preprocess comments service")
     service = PreprocessCommentsService(
         bronze_repo=bronze_repo,
         silver_repo=silver_repo,
         text_preprocessor=tp,
     )
 
-    logger.info(f"Running Preprocess Comments Service for video {video_id}")
+    logger.info("Starting preprocess | video_id=%s", video_id)
     out_path = service.run(video_id, overwrite=args.overwrite, batch_size=args.batch_size)
-    logger.info(f"Preprocess completed")
+    logger.info("Preprocess completed | video_id=%s output_path=%s", video_id, out_path)
 
     print(f"Saved Silver parquet to: {out_path}")
     return 0
@@ -511,15 +511,13 @@ def run_stats(args: argparse.Namespace) -> int:
 
     data_root = Path(args.data_root)
 
-    logger.info(f"Searching for Silver parquet for video: {video_id}")
     silver_path = _silver_parquet_path(data_root, video_id)
     if not silver_path.exists():
-        logger.error(f"Silver file not found: {silver_path}")
+        logger.error("Silver parquet not found | video_id=%s path=%s", video_id, silver_path)
         return 2
 
     stopwords_hash = str(hash_config(sorted(STOPWORDS[args.lang])))
 
-    logger.info("Initializing Basic Stats Service")
     svc = BasicStatsService()
     cfg = BasicStatsConfig(
         top_n_tokens=args.top_n,
@@ -531,7 +529,7 @@ def run_stats(args: argparse.Namespace) -> int:
         stopwords_hash=stopwords_hash,
     )
 
-    logger.info(f"Computing Basic Stats for video: {video_id}")     
+    logger.info("Starting basic stats computation | video_id=%s", video_id)
     b_stats = svc.compute_for_video(
         video_id=video_id,
         silver_parquet_path=str(silver_path),
@@ -540,10 +538,15 @@ def run_stats(args: argparse.Namespace) -> int:
         batch_size=args.batch_size
     )
 
-    logger.info(f"Saving Basic Stats") 
     repo = ParquetBasicStatsRepository(data_root=data_root)
     repo.save(b_stats)
-    logger.info("Basic stats computation completed") 
+    logger.info(
+        "Basic stats completed | video_id=%s rows=%s total_tokens=%s unique_tokens=%s",
+        b_stats.video_id,
+        b_stats.row_count,
+        b_stats.total_token_count,
+        b_stats.unique_token_count,
+    )
 
     print(f"video_id: {b_stats.video_id}")
     print(f"rows: {b_stats.row_count} | empty_text: {b_stats.empty_text_count}")
@@ -560,33 +563,31 @@ def run_tfidf(args: argparse.Namespace) -> int:
     video_id = extract_video_id(args.video)
     
     data_root = Path(args.data_root)
-    logger.info(f"Searching for Silver parquet for video: {video_id}")
     silver_path = _silver_parquet_path(data_root, video_id)
     if not silver_path.exists():
-        logger.error(f"Silver file not found: {silver_path}")
+        logger.error("Silver parquet not found | video_id=%s path=%s", video_id, silver_path)
         return 2
         
     if args.ngram_min < 1:
-        logger.error("--ngram-min must be >= 1")
+        logger.error("Invalid argument | --ngram-min must be >= 1")
         return 2
 
     if args.ngram_max < args.ngram_min:
-        logger.error("--ngram-max must be >= --ngram-min")
+        logger.error("Invalid argument | --ngram-max must be >= --ngram-min")
         return 2
 
     if args.min_ngram_df < 1:
-        logger.error("--min-ngram-df must be >= 1")
+        logger.error("Invalid argument | --min-ngram-df must be >= 1")
         return 2
     
-    if args.use_corpus == True:
-        logger.info(f"Loading global corpus")
+    if args.use_corpus:
+        logger.info("Loading global corpus")
         corpus = ParquetCorpusDfRepository(data_root=data_root).load()
     else:
         corpus = None
         
     stopwords_hash = str(hash_config(sorted(STOPWORDS[args.lang])))
 
-    logger.info("Initializing TF-IDF Service")
     svc = TfidfService()
     cfg = TfidfConfig(
         top_k=args.top_k,
@@ -603,7 +604,11 @@ def run_tfidf(args: argparse.Namespace) -> int:
         min_ngram_df=args.min_ngram_df,  
     )
     
-    logger.info(f"Computing TF-IDF for video: {video_id}") 
+    logger.info(
+        "Starting TF-IDF computation | video_id=%s use_corpus=%s",
+        video_id,
+        args.use_corpus,
+    )
     tfidf = svc.compute_for_video(
         video_id=video_id,
         silver_parquet_path=str(silver_path),
@@ -614,10 +619,15 @@ def run_tfidf(args: argparse.Namespace) -> int:
         unfilter_sentiment=not args.keep_sentiment,  
     )
     
-    logger.info("Saving TF-IDF keywords")
     repo = ParquetTfidfKeywordsRepository(data_root=data_root)
     repo.save(tfidf)
-    logger.info("TF-IDF computation completed")
+    logger.info(
+        "TF-IDF completed | video_id=%s rows=%s docs_used=%s keywords=%s",
+        tfidf.video_id,
+        tfidf.row_count,
+        tfidf.doc_count_non_empty,
+        len(tfidf.keywords),
+    )
     
     print(f"video_id: {tfidf.video_id}")
     print(f"rows: {tfidf.row_count} | empty_text: {tfidf.empty_text_count} | docs_used: {tfidf.doc_count_non_empty}")
@@ -640,20 +650,19 @@ def run_corpus(args: argparse.Namespace) -> int:
     data_root = Path(args.data_root)
         
     if args.ngram_min < 1:
-        logger.error("--ngram-min must be >= 1")
+        logger.error("Invalid argument | --ngram-min must be >= 1")
         return 2
 
     if args.ngram_max < args.ngram_min:
-        logger.error("--ngram-max must be >= --ngram-min")
+        logger.error("Invalid argument | --ngram-max must be >= --ngram-min")
         return 2
 
     if args.min_ngram_df < 1:
-        logger.error("--min-ngram-df must be >= 1")
+        logger.error("Invalid argument | --min-ngram-df must be >= 1")
         return 2
 
     stopwords_hash = str(hash_config(sorted(STOPWORDS[args.lang])))
     
-    logger.info("Initializing global Corpus Service")
     corpus = CorpusService(data_root=data_root)
     cfg = TfidfConfig(
         drop_numeric_tokens=not args.keep_numeric,
@@ -667,13 +676,16 @@ def run_corpus(args: argparse.Namespace) -> int:
         min_ngram_df=args.min_ngram_df,  
     )
     
-    logger.info("Building global corpus")
+    logger.info("Starting corpus build")
     result = corpus.build(config=cfg, batch_size=args.batch_size)
     
-    logger.info("Saving global corpus")
     repo = ParquetCorpusDfRepository(data_root=data_root)
     repo.save(result)
-    logger.info("Completed global corpus")
+    logger.info(
+        "Corpus build completed | videos=%s features=%s",
+        result.video_count,
+        len(result.tokens),
+    )
     
     print("corpus_df:")
     print(f"videos: {result.video_count}")
@@ -683,21 +695,20 @@ def run_corpus(args: argparse.Namespace) -> int:
 
 
 def run_discover_vids(args: argparse.Namespace) -> int:
-    logger.info("Searching for YouTube API key")
+    logger.info("Looking up YouTube API key")
     api_key = os.getenv("YOUTUBE_API_KEY")
     
     channel_id = args.channelId
 
-    if api_key: 
-            logger.info("Accessing YouTube API Client")
-            client = YouTubeApiClient(api_key=api_key) 
-            logger.info("Analyzing provided channel reference")
+    if api_key:
+            logger.info("Using YouTube API client | channel_ref=%s", args.channelId)
             parsed_channel_id = parse_channel_ref(args.channelId)
+            client = YouTubeApiClient(api_key=api_key)
             channel_id = client.resolve_channel_id(parsed_channel_id)
-            
+            logger.info("Resolved channel reference | input=%s channel_id=%s", args.channelId, channel_id)
     else:
-            logger.warning("API key not found, accessing StubChannelVideoDiscoveryClient (not real client)")
-            client = StubChannelVideoDiscoveryClient()
+            logger.error("YouTube API key not found")
+            return 2
     
     request = ChannelVideoDiscovery(
         channel_id=channel_id,
@@ -706,12 +717,11 @@ def run_discover_vids(args: argparse.Namespace) -> int:
         limit=args.limit,    
     )
     
-    logger.info("Initializing Channel Video Discovery Service")
     service = ChannelVideoDiscoveryService(client=client, request=request)
-    result = service.run()  
-    logger.info("Channel discovery completed")
+    logger.info("Starting channel video discovery | channel_id=%s", channel_id)
+    result = service.run()
+    logger.info("Channel video discovery completed | channel_id=%s videos=%s", channel_id, result.video_count)
     
-    logger.info("Printing results")
     for video in result.videos:
         if video.published_at:
             date_str = video.published_at.strftime("%Y-%m-%d %H:%M")
@@ -725,20 +735,19 @@ def run_discover_vids(args: argparse.Namespace) -> int:
 
 
 def run_scrape_channel(args: argparse.Namespace) -> int:
-    logger.info("Searching for YouTube API key")
+    logger.info("Looking up YouTube API key")
     api_key = os.getenv("YOUTUBE_API_KEY")
     
     channel_id = args.channelId
 
-    if api_key: 
-            logger.info("Accessing YouTube API Client")
-            client = YouTubeApiClient(api_key=api_key) 
-            logger.info("Analyzing provided channel reference")
+    if api_key:
+            logger.info("Using YouTube API client | channel_ref=%s", args.channelId)
+            client = YouTubeApiClient(api_key=api_key)
             parsed_channel_id = parse_channel_ref(args.channelId)
             channel_id = client.resolve_channel_id(parsed_channel_id)
-            
+            logger.info("Resolved channel reference | input=%s channel_id=%s", args.channelId, channel_id)
     else:
-            logger.error("API key not found")
+            logger.error("YouTube API key not found")
             return 2
     
     request = ChannelVideoDiscovery(
@@ -748,14 +757,14 @@ def run_scrape_channel(args: argparse.Namespace) -> int:
         limit=args.video_limit,    
     )
     
-    logger.info("Initializing Channel Video Discovery Service")
     service = ChannelVideoDiscoveryService(client=client, request=request)
-    videos = service.run()  
-    logger.info("Channel discovery completed")
+    logger.info("Starting channel video discovery | channel_id=%s", channel_id)
+    videos = service.run()
+    logger.info("Channel video discovery completed | channel_id=%s videos=%s", channel_id, videos.video_count)
     
     repo = JSONLCommentsRepository(data_dir=args.bronze_dir)
     
-    logger.info("Scraping individual videos")
+    logger.info("Starting channel scrape | channel_id=%s", channel_id)
     start_at_utc = datetime.now(tz=timezone.utc)
     comments_count = 0
     errors = 0
@@ -774,13 +783,18 @@ def run_scrape_channel(args: argparse.Namespace) -> int:
             print(f"{video.video_id} | title={video.title} | comments={result.saved_count} | path={result.path}")
         except Exception as e:
              errors += 1
+             logger.exception("Video scrape failed | video_id=%s", video.video_id)
              print(f"Failed to scrape | video_id={video.video_id} | error={e}")
-    finished_at_utc = datetime.now(tz=timezone.utc)         
-    logger.info("Scraping completed")
+    finished_at_utc = datetime.now(tz=timezone.utc)
+    logger.info(
+        "Channel scrape completed | channel_id=%s videos=%s comments=%s errors=%s",
+        channel_id,
+        videos.video_count,
+        comments_count,
+        errors,
+    )
     print(f"TOTAL | videos={videos.video_count} | comments={comments_count} | errors={errors}")
-    
 
-    logger.info("Saving channel run metadata")
     try:
         summary = ChannelRunSummary(
             channel_id=channel_id,
@@ -797,10 +811,11 @@ def run_scrape_channel(args: argparse.Namespace) -> int:
         )
         repo = JSONChannelRunSummaryRepository(data_root=args.data_root)
         path = repo.save(summary)
+        logger.info("Channel run summary saved | channel_id=%s path=%s", channel_id, path)
         print(f"Metadata saved to: {path}")
         
-    except Exception as e:
-         logger.warning(f"Failed to save metadata due to: {e}")
+    except Exception:
+         logger.exception("Failed to save channel run summary | channel_id=%s", channel_id)
     
     return 0
 
