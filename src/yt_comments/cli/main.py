@@ -413,6 +413,39 @@ def build_parser() -> argparse.ArgumentParser:
         help="Overwrite existing bronze file",
     )
     scrape_channel.set_defaults(func=run_scrape_channel)
+
+    # PREPROCESS-CHANNEL
+    preprocess_channel = subparser.add_parser(
+        "preprocess-channel", 
+        help="Build Silver parquet from Bronze JSONL from a YouTube channel comments"
+    )
+    preprocess_channel.add_argument(
+        "channelId", 
+        help="YouTube channel reference (channel ID, @handle, or URL)"
+    )
+    preprocess_channel.add_argument(
+        "--bronze-dir", 
+        default="data/bronze", 
+        help="Bronze output directory (default: 'data/bronze')"
+        )
+    preprocess_channel.add_argument(
+        "--silver-dir", 
+        default="data/silver", 
+        help="Silver output directory (default: 'data/silver)"
+        )
+    preprocess_channel.add_argument(
+        "--batch-size", 
+        type=int, 
+        default=5000, 
+        help="Rows per parquet write batch"
+        )
+    preprocess_channel.add_argument(
+        "--overwrite",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Overwrite existing silver file",
+    )
+    preprocess_channel.set_defaults(func=run_preprocess_channel)
     
     return parser
 
@@ -726,6 +759,7 @@ def run_scrape_channel(args: argparse.Namespace) -> int:
     start_at_utc = datetime.now(tz=timezone.utc)
     comments_count = 0
     errors = 0
+    video_ids = []
     for video in videos.videos:
         try:
             result = _scrape_video(
@@ -736,6 +770,7 @@ def run_scrape_channel(args: argparse.Namespace) -> int:
                 overwrite=args.overwrite
             )
             comments_count += result.saved_count
+            video_ids.append(video.video_id)
             print(f"{video.video_id} | title={video.title} | comments={result.saved_count} | path={result.path}")
         except Exception as e:
              errors += 1
@@ -751,6 +786,7 @@ def run_scrape_channel(args: argparse.Namespace) -> int:
             channel_id=channel_id,
             started_at_utc=start_at_utc,
             finished_at_utc=finished_at_utc,
+            video_ids=tuple(video_ids),
             video_count=videos.video_count,
             comment_count=comments_count,
             error_count=errors,
@@ -767,6 +803,57 @@ def run_scrape_channel(args: argparse.Namespace) -> int:
          logger.warning(f"Failed to save metadata due to: {e}")
     
     return 0
+
+def run_preprocess_channel(args: argparse.Namespace) -> int:
+    logger.info("Loading latest channel run summary | channel_id=%s", args.channelId)
+    repo = JSONChannelRunSummaryRepository(data_root=args.data_root)
+    summary = repo.load_latest(channel_id=args.channelId)
+    logger.info(
+        "Loaded channel run summary | channel_id=%s | videos=%d",
+        args.channelId,
+        len(summary.video_ids),
+    )
+    
+    bronze_repo = JSONLCommentsRepository(args.bronze_dir)
+    silver_repo = ParquetSilverCommentsRepository(args.silver_dir)
+    tp = TextPreprocessor()
+    service = PreprocessCommentsService(
+            bronze_repo=bronze_repo,
+            silver_repo=silver_repo,
+            text_preprocessor=tp,
+    )
+
+    logger.info(
+        "Starting channel preprocessing | channel_id=%s | videos=%d",
+        args.channelId,
+        len(summary.video_ids),
+    )
+    errors = 0
+    for video_id in summary.video_ids:
+        try:
+            logger.info("Preprocessing video | video_id=%s", video_id)
+            out_path = service.run(video_id, overwrite=args.overwrite, batch_size=args.batch_size)
+            logger.info(
+                "Preprocessing completed | video_id=%s | out_path=%s",
+                video_id,
+                out_path,
+            )
+            print(f"Saved Silver parquet to: {out_path}")
+        except Exception as e:
+            errors += 1
+            logger.warning("Preprocessing failed | video_id=%s", video_id)
+            print(f"Failed to preprocess | video_id={video_id}")
+
+    logger.info(
+        "Channel preprocessing finished | channel_id=%s | total=%d | processed=%d | errors=%d",
+        args.channelId,
+        summary.video_count,
+        summary.video_count-errors,
+        errors,
+    )         
+    print(f"TOTAL | videos={summary.video_count} | errors={errors}")     
+    return 1 if errors else 0
+         
 
 def _configure_logging(verbose: bool) -> None:
     level = logging.INFO if verbose else logging.WARNING
