@@ -27,12 +27,5 @@ def test_channel_run_summary_repository_save_creates_timestamped_json(tmp_path: 
     assert path.name == "20260101T120130Z.json"
     assert path.parent == tmp_path / "gold" / "channel_runs" / "chan123"
     
-    text = path.read_text(encoding="utf-8")
-    assert '"channel_id": "chan123"' in text
-    assert '"video_count": 10' in text
-    assert '"comment_count": 100' in text
-    assert '"error_count": 5' in text
-    assert '"started_at_utc": "2026-01-01T12:00:00Z"' in text
-    assert '"finished_at_utc": "2026-01-01T12:01:30Z"' in text
-    assert '"published_after": "2026-01-01T00:00:00Z"' in text
-    assert '"published_before": null' in text
+    got = repo.load_latest("chan123")
+    assert summary == got
