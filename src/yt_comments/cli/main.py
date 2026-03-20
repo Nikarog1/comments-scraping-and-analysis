@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from yt_comments.analysis.features import hash_config
 from yt_comments.analysis.basic_stats.models import BasicStatsConfig
 from yt_comments.analysis.basic_stats.service import BasicStatsService
+from yt_comments.analysis.channel_runs.models import ChannelRunSummary
 from yt_comments.analysis.corpus.service import CorpusService
 from yt_comments.analysis.tfidf.models import TfidfConfig
 from yt_comments.analysis.tfidf.service import TfidfService
@@ -31,6 +32,7 @@ from yt_comments.preprocessing.text_preprocessor import TextPreprocessor
 
 from yt_comments.storage.bronze_comments_repository import JSONLCommentsRepository
 from yt_comments.storage.gold_basic_stats_parquet_repository import ParquetBasicStatsRepository
+from yt_comments.storage.gold_channel_run_summary_repository import JSONChannelRunSummaryRepository
 from yt_comments.storage.gold_corpus_df_parquet_repository import ParquetCorpusDfRepository
 from yt_comments.storage.gold_tfidf_keywords_parquet_repository import ParquetTfidfKeywordsRepository
 from yt_comments.storage.silver_comments_repository import ParquetSilverCommentsRepository
@@ -395,6 +397,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Include videos published BEFORE the specified date"
     )
     scrape_channel.add_argument(
+        "--data-root", 
+        default="data", 
+        help="Project data directory (default: data)"
+    )
+    scrape_channel.add_argument(
         "--bronze-dir", 
         default="data/bronze", 
         help="Bronze output directory (default: 'data/bronze')"
@@ -716,6 +723,7 @@ def run_scrape_channel(args: argparse.Namespace) -> int:
     repo = JSONLCommentsRepository(data_dir=args.bronze_dir)
     
     logger.info("Scraping individual videos")
+    start_at_utc = datetime.now(tz=timezone.utc)
     comments_count = 0
     errors = 0
     for video in videos.videos:
@@ -732,9 +740,31 @@ def run_scrape_channel(args: argparse.Namespace) -> int:
         except Exception as e:
              errors += 1
              print(f"Failed to scrape | video_id={video.video_id} | error={e}")
-             
+    finished_at_utc = datetime.now(tz=timezone.utc)         
     logger.info("Scraping completed")
     print(f"TOTAL | videos={videos.video_count} | comments={comments_count} | errors={errors}")
+    
+
+    logger.info("Saving channel run metadata")
+    try:
+        summary = ChannelRunSummary(
+            channel_id=channel_id,
+            started_at_utc=start_at_utc,
+            finished_at_utc=finished_at_utc,
+            video_count=videos.video_count,
+            comment_count=comments_count,
+            error_count=errors,
+            video_limit=args.video_limit,
+            comment_limit=args.comments_limit,
+            published_after=args.published_after,
+            published_before=args.published_before,
+        )
+        repo = JSONChannelRunSummaryRepository(data_root=args.data_root)
+        path = repo.save(summary)
+        print(f"Metadata saved to: {path}")
+        
+    except Exception as e:
+         logger.warning(f"Failed to save metadata due to: {e}")
     
     return 0
 
