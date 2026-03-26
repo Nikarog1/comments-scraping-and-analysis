@@ -32,6 +32,7 @@ from yt_comments.preprocessing.text_preprocessor import TextPreprocessor
 
 from yt_comments.storage.bronze_comments_repository import JSONLCommentsRepository
 from yt_comments.storage.gold_basic_stats_parquet_repository import ParquetBasicStatsRepository
+from yt_comments.storage.gold_channel_ref_mapping_repository import JSONChannelRefRepository
 from yt_comments.storage.gold_channel_run_summary_repository import JSONChannelRunSummaryRepository
 from yt_comments.storage.gold_corpus_df_parquet_repository import ParquetCorpusDfRepository
 from yt_comments.storage.gold_tfidf_keywords_parquet_repository import ParquetTfidfKeywordsRepository
@@ -362,6 +363,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--published-before", 
         type=_parse_cli_datetime, 
         help="Include videos published BEFORE the specified date"
+    )
+    discover_vids.add_argument(
+        "--data-root", 
+        default="data", 
+        help="Project data directory (default: data)"
     )
     discover_vids.set_defaults(func=run_discover_vids)
     
@@ -705,6 +711,7 @@ def run_discover_vids(args: argparse.Namespace) -> int:
             parsed_channel_id = parse_channel_ref(args.channelId)
             client = YouTubeApiClient(api_key=api_key)
             channel_id = client.resolve_channel_id(parsed_channel_id)
+            _save_channel_id_ref_mapping(data_root=args.data_root, raw_input=parsed_channel_id.value, channel_id=channel_id)
             logger.info("Resolved channel reference | input=%s channel_id=%s", args.channelId, channel_id)
     else:
             logger.error("YouTube API key not found")
@@ -745,6 +752,7 @@ def run_scrape_channel(args: argparse.Namespace) -> int:
             client = YouTubeApiClient(api_key=api_key)
             parsed_channel_id = parse_channel_ref(args.channelId)
             channel_id = client.resolve_channel_id(parsed_channel_id)
+            _save_channel_id_ref_mapping(data_root=args.data_root, raw_input=parsed_channel_id.value, channel_id=channel_id)
             logger.info("Resolved channel reference | input=%s channel_id=%s", args.channelId, channel_id)
     else:
             logger.error("YouTube API key not found")
@@ -821,11 +829,19 @@ def run_scrape_channel(args: argparse.Namespace) -> int:
 
 def run_preprocess_channel(args: argparse.Namespace) -> int:
     logger.info("Loading latest channel run summary | channel_id=%s", args.channelId)
+    
+    channel_id = _load_channel_id_ref_mapping(data_root=args.data_root, raw_input=args.channelId)
+    logger.info(
+    "Resolved channel reference | channel_ref=%s | channel_id=%s",
+    args.channelId,
+    channel_id,
+    )
+    
     repo = JSONChannelRunSummaryRepository(data_root=args.data_root)
-    summary = repo.load_latest(channel_id=args.channelId)
+    summary = repo.load_latest(channel_id=channel_id)
     logger.info(
         "Loaded channel run summary | channel_id=%s | videos=%d",
-        args.channelId,
+        channel_id,
         len(summary.video_ids),
     )
     
@@ -840,7 +856,7 @@ def run_preprocess_channel(args: argparse.Namespace) -> int:
 
     logger.info(
         "Starting channel preprocessing | channel_id=%s | videos=%d",
-        args.channelId,
+        channel_id,
         len(summary.video_ids),
     )
     errors = 0
@@ -861,7 +877,7 @@ def run_preprocess_channel(args: argparse.Namespace) -> int:
 
     logger.info(
         "Channel preprocessing finished | channel_id=%s | total=%d | processed=%d | errors=%d",
-        args.channelId,
+        channel_id,
         summary.video_count,
         summary.video_count-errors,
         errors,
@@ -907,3 +923,12 @@ def _scrape_video(
 ):
      service = ScrapeCommentsService(client=client, repo=repo)
      return service.run(video_id, overwrite=overwrite, limit=limit)
+
+def _save_channel_id_ref_mapping(*, data_root: Path, raw_input: str, channel_id: str) -> Path:
+     return JSONChannelRefRepository(data_root=data_root).save(raw_input=raw_input, channel_id=channel_id)
+
+def _load_channel_id_ref_mapping(*, data_root: Path, raw_input: str) -> str:
+    try: 
+        return JSONChannelRefRepository(data_root=data_root).load(raw_input=raw_input)
+    except:
+         return raw_input
