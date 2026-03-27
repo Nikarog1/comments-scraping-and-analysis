@@ -11,6 +11,7 @@ from nltk.stem import SnowballStemmer
 import pyarrow.parquet as pq
 
 from yt_comments.analysis.basic_stats.models import BasicStatsConfig
+from yt_comments.analysis.channel_stats.models import ChannelTokenStatsConfig
 from yt_comments.analysis.tfidf.models import TfidfConfig
 from yt_comments.nlp.stopwords import get_stopwords
 
@@ -69,7 +70,7 @@ def generate_ngrams(tokens: list[str], ngram_range: tuple[int, int]) -> Iterable
             yield " ".join(tokens[i : i + n]) # dequeue can be used here, but slice was kept for simplification
 
 
-def tokenize(text: str, config: BasicStatsConfig | TfidfConfig) -> Iterable[str]:
+def tokenize(text: str, config: BasicStatsConfig | TfidfConfig | ChannelTokenStatsConfig) -> Iterable[str]:
     if config.lowercase:
         text = text.lower()
         
