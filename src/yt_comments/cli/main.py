@@ -924,11 +924,11 @@ def _scrape_video(
      service = ScrapeCommentsService(client=client, repo=repo)
      return service.run(video_id, overwrite=overwrite, limit=limit)
 
-def _save_channel_id_ref_mapping(*, data_root: Path, raw_input: str, channel_id: str) -> Path:
-     return JSONChannelRefRepository(data_root=data_root).save(raw_input=raw_input, channel_id=channel_id)
+def _save_channel_id_ref_mapping(*, data_root: str, raw_input: str, channel_id: str) -> Path:
+     return JSONChannelRefRepository(data_root=Path(data_root)).save(raw_input=raw_input, channel_id=channel_id)
 
-def _load_channel_id_ref_mapping(*, data_root: Path, raw_input: str) -> str:
+def _load_channel_id_ref_mapping(*, data_root: str, raw_input: str) -> str:
     try: 
-        return JSONChannelRefRepository(data_root=data_root).load(raw_input=raw_input)
+        return JSONChannelRefRepository(data_root=Path(data_root)).load(raw_input=raw_input)
     except:
          return raw_input
