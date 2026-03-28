@@ -432,6 +432,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="YouTube channel reference (channel ID, @handle, or URL)"
     )
     preprocess_channel.add_argument(
+        "--data-root", 
+        default="data", 
+        help="Project data directory (default: data)"
+    )
+    preprocess_channel.add_argument(
         "--bronze-dir", 
         default="data/bronze", 
         help="Bronze output directory (default: 'data/bronze')"
@@ -469,6 +474,11 @@ def build_parser() -> argparse.ArgumentParser:
         default="data", 
         help="Project data directory (default: data)"
     )
+    c_stats.add_argument(
+        "--silver-dir", 
+        default="data/silver", 
+        help="Silver output directory (default: 'data/silver)"
+        )
     c_stats.add_argument(
         "--top-n", 
         type=int, 
@@ -947,7 +957,6 @@ def run_preprocess_channel(args: argparse.Namespace) -> int:
     return 1 if errors else 0
 
 def run_channel_stats(args: argparse.Namespace) -> int:
-    data_root = Path(args.data_root)
      
     logger.info("Loading latest channel run summary | channel_id=%s", args.channelId)
     channel_id = _load_channel_id_ref_mapping(
@@ -961,7 +970,7 @@ def run_channel_stats(args: argparse.Namespace) -> int:
     )
     
     logger.info("Extracting channel load metadata | channel_id=%s", channel_id)
-    summary_repo = JSONChannelRunSummaryRepository(data_root=data_root)
+    summary_repo = JSONChannelRunSummaryRepository(data_root=args.data_root)
     summary = summary_repo.load_latest(channel_id=channel_id)
 
     logger.info("Starting channel token stats computation | channel_id=%s", channel_id)
@@ -977,7 +986,7 @@ def run_channel_stats(args: argparse.Namespace) -> int:
         normalization=args.stemming_mode,
     )
 
-    silver_repo = ParquetSilverCommentsRepository(data_root / "silver")
+    silver_repo = ParquetSilverCommentsRepository(args.silver_dir)
     service = ChannelTokenStatsService()
     stats = service.compute_for_channel(
         channel_id=channel_id,
@@ -987,7 +996,7 @@ def run_channel_stats(args: argparse.Namespace) -> int:
         created_at_utc=datetime.now(timezone.utc),
     )
 
-    repo = ParquetChannelTokenStatsRepository(data_root=data_root)
+    repo = ParquetChannelTokenStatsRepository(data_root=args.data_root)
     repo.save(stats)
     logger.info(
         "Channel token stats completed | channel_id=%s rows=%s total_tokens=%s unique_tokens=%s",
