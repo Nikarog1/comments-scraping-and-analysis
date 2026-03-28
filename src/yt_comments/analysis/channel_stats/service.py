@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Optional
 
-from yt_comments.analysis.features import hash_config, tokenize, read_preprocess_version
+from yt_comments.analysis.features import hash_config, tokenize, resolve_preprocess_versions
 from yt_comments.analysis.basic_stats.models import BasicStatsConfig, TopToken
 from yt_comments.analysis.channel.channel_loader import ChannelTextsLoader
 from yt_comments.analysis.channel_stats.models import ChannelTokenStats
@@ -30,7 +29,7 @@ class ChannelTokenStatsService:
         if not video_ids:
             raise ValueError("video_ids must not be empty")
 
-        preprocess_version = self._resolve_preprocess_version(
+        preprocess_version = resolve_preprocess_versions(
             video_ids=video_ids,
             silver_repo=silver_repo,
         )
@@ -83,29 +82,5 @@ class ChannelTokenStatsService:
             unique_token_count=int(unique_token_count),
             top_tokens=top_tokens,
         )
-    
-    @staticmethod
-    def _resolve_preprocess_version(
-        *,
-        video_ids: tuple[str, ...],
-        silver_repo: ParquetSilverCommentsRepository,
-    ) -> str:
-        versions: set[str] = set()
-
-        for video_id in video_ids:
-            silver_path = silver_repo._path_for_comments(video_id)
-            version = read_preprocess_version(silver_path)
-            versions.add(version)
-
-        if not versions:
-            raise ValueError("Could not resolve preprocess_version from input videos")
-
-        if len(versions) != 1:
-            raise ValueError(
-                "Multiple preprocess_version values found across channel videos: "
-                f"{sorted(versions)!r}"
-            )
-
-        return next(iter(versions))
             
         

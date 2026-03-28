@@ -13,6 +13,7 @@ import pyarrow.parquet as pq
 from yt_comments.analysis.basic_stats.models import BasicStatsConfig
 from yt_comments.analysis.tfidf.models import TfidfConfig
 from yt_comments.nlp.stopwords import get_stopwords
+from yt_comments.storage.silver_comments_repository import ParquetSilverCommentsRepository
 
 
 _STEMMER = SnowballStemmer("english")
@@ -122,3 +123,27 @@ def normalize_repeating_letters(token: str) -> str:
 
 def is_repeating_pair_token(token: str) -> bool:
     return bool(_REPEAT_PAIR_3PLUS_RE.fullmatch(token)) # fullmatch used to consistency that the token should contain repeating pairs only
+
+
+def resolve_preprocess_versions(
+    *,
+    video_ids: tuple[str, ...],
+    silver_repo: ParquetSilverCommentsRepository,
+) -> str:
+    versions: set[str] = set()
+
+    for video_id in video_ids:
+        silver_path = silver_repo._path_for_comments(video_id)
+        version = read_preprocess_version(silver_path)
+        versions.add(version)
+
+    if not versions:
+        raise ValueError("Could not resolve preprocess_version from input videos")
+
+    if len(versions) != 1:
+        raise ValueError(
+            "Multiple preprocess_version values found across channel videos: "
+            f"{sorted(versions)!r}"
+        )
+
+    return next(iter(versions))
