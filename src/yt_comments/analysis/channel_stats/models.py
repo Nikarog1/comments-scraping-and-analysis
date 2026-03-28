@@ -3,27 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-
-@dataclass(frozen=True, slots=True)
-class ChannelTokenStat:
-    token: str
-    count: int
+from yt_comments.analysis.basic_stats.models import BasicStatsConfig, TopToken
     
 
-@dataclass(frozen=True, slots=True)
-class ChannelTokenStatsConfig:
-    """
-    Deterministic configuration for gold v4 channel basic stats
-    """
-    top_n_tokens: int = 30
-    min_token_len: int = 2
-    drop_numeric_tokens: bool = True
-    lowercase: bool = True 
-    drop_stopwords: bool = True
-    stopwords_lang: str = "en"
-    stopwords_hash: str = "dummy"
-    normalization: str = "none" # stemming
-    
 
 @dataclass(frozen=True, slots=True)
 class ChannelTokenStats:
@@ -36,4 +18,4 @@ class ChannelTokenStats:
     empty_text_count: int
     total_token_count: int
     unique_token_count: int
-    top_tokens: tuple[ChannelTokenStat, ...]
+    top_tokens: tuple[TopToken, ...]

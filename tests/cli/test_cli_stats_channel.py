@@ -2,7 +2,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from yt_comments.analysis.channel_stats.models import ChannelTokenStat, ChannelTokenStats
+from yt_comments.analysis.basic_stats.models import TopToken
+from yt_comments.analysis.channel_stats.models import ChannelTokenStats
 from yt_comments.cli.main import main
 
 
@@ -21,9 +22,9 @@ def test_cli_stats_channel(capsys, tmp_path: Path):
         total_token_count=100,
         unique_token_count=70,
         top_tokens=(
-            ChannelTokenStat("cat", 20),
-            ChannelTokenStat("dog", 15),
-            ChannelTokenStat("amazing", 10)
+            TopToken("cat", 20),
+            TopToken("dog", 15),
+            TopToken("amazing", 10)
         )
     )
     

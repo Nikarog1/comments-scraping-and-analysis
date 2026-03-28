@@ -3,7 +3,7 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from yt_comments.analysis.channel_stats.models import ChannelTokenStat, ChannelTokenStats, ChannelTokenStatsConfig
+from yt_comments.analysis.basic_stats.models import BasicStatsConfig
 from yt_comments.analysis.channel_stats.service import ChannelTokenStatsService
 from yt_comments.storage.silver_comments_repository import ParquetSilverCommentsRepository
 
@@ -37,7 +37,7 @@ def test_channel_token_stats_service_returns_result(tmp_path: Path):
     )
     
     silver_repo = ParquetSilverCommentsRepository(silver_root)
-    config = ChannelTokenStatsConfig() # keep defaults
+    config = BasicStatsConfig() # keep defaults
     service = ChannelTokenStatsService()
     
     result = service.compute_for_channel(

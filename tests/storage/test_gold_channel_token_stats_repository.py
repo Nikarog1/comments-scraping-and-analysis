@@ -3,7 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from yt_comments.analysis.channel_stats.models import ChannelTokenStat, ChannelTokenStats
+from yt_comments.analysis.basic_stats.models import TopToken
+from yt_comments.analysis.channel_stats.models import ChannelTokenStats
 from yt_comments.storage.gold_channel_token_stats_repository import ParquetChannelTokenStatsRepository
 
 
@@ -20,7 +21,7 @@ def test_channel_token_stats_repository_round_trip(tmp_path: Path):
         empty_text_count=2,
         total_token_count=100,
         unique_token_count=55,
-        top_tokens=(ChannelTokenStat("cat", 3), ChannelTokenStat("dog", 2)),
+        top_tokens=(TopToken("cat", 3), TopToken("dog", 2)),
     )
     
     repo.save(stats_in)

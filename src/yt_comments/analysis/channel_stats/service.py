@@ -6,8 +6,9 @@ from pathlib import Path
 from typing import Optional
 
 from yt_comments.analysis.features import hash_config, tokenize, read_preprocess_version
+from yt_comments.analysis.basic_stats.models import BasicStatsConfig, TopToken
 from yt_comments.analysis.channel.channel_loader import ChannelTextsLoader
-from yt_comments.analysis.channel_stats.models import ChannelTokenStat, ChannelTokenStats, ChannelTokenStatsConfig
+from yt_comments.analysis.channel_stats.models import ChannelTokenStats
 from yt_comments.storage.silver_comments_repository import ParquetSilverCommentsRepository
 
 
@@ -22,7 +23,7 @@ class ChannelTokenStatsService:
             channel_id: str,
             video_ids: tuple[str, ...],
             silver_repo: ParquetSilverCommentsRepository,
-            config: ChannelTokenStatsConfig,
+            config: BasicStatsConfig,
             created_at_utc: Optional[datetime] = None,
             batch_size: int = 5000
     ) -> ChannelTokenStats:
@@ -66,7 +67,7 @@ class ChannelTokenStatsService:
         )
 
         top_tokens = tuple(
-            ChannelTokenStat(token=token, count=int(count))
+            TopToken(token=token, count=int(count))
             for token, count in sorted_tokens[: config.top_n_tokens]
         )
         

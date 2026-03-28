@@ -12,7 +12,6 @@ from yt_comments.analysis.features import hash_config
 from yt_comments.analysis.basic_stats.models import BasicStatsConfig
 from yt_comments.analysis.basic_stats.service import BasicStatsService
 from yt_comments.analysis.channel_runs.models import ChannelRunSummary
-from yt_comments.analysis.channel_stats.models import ChannelTokenStatsConfig
 from yt_comments.analysis.channel_stats.service import ChannelTokenStatsService
 from yt_comments.analysis.corpus.service import CorpusService
 from yt_comments.analysis.tfidf.models import TfidfConfig
@@ -975,7 +974,7 @@ def run_channel_stats(args: argparse.Namespace) -> int:
 
     logger.info("Starting channel token stats computation | channel_id=%s", channel_id)
     stopwords_hash = str(hash_config(sorted(STOPWORDS[args.lang])))
-    cfg = ChannelTokenStatsConfig(
+    cfg = BasicStatsConfig(
         top_n_tokens=args.top_n,
         min_token_len=args.min_token_len,
         drop_numeric_tokens=not args.keep_numeric,

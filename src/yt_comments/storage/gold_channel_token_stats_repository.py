@@ -6,7 +6,8 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from yt_comments.analysis.channel_stats.models import ChannelTokenStat, ChannelTokenStats
+from yt_comments.analysis.basic_stats.models import TopToken
+from yt_comments.analysis.channel_stats.models import ChannelTokenStats
 from yt_comments.analysis.channel_stats.paths import channel_token_stats_path
 
 
@@ -98,7 +99,7 @@ class ParquetChannelTokenStatsRepository:
             created_at = created_at.replace(tzinfo=timezone.utc)
             
         top_tokens_py = row.get("top_tokens") or []
-        top_tokens = tuple(ChannelTokenStat(token=t["token"], count=int(t["count"])) for t in top_tokens_py)
+        top_tokens = tuple(TopToken(token=t["token"], count=int(t["count"])) for t in top_tokens_py)
         
         return ChannelTokenStats(
             channel_id=row["channel_id"],
