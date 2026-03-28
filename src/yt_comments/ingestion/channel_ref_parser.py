@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 
 _CHANNEL_ID_RE = re.compile(r"^UC[a-zA-Z0-9_-]{22}$")
-_HANDLE_RE = re.compile(r"^@[a-z-A-Z0-9._-]{3,30}$")
+_HANDLE_RE = re.compile(r"^@[a-zA-Z0-9._-]{3,30}$")
 
 @dataclass(frozen=True, slots=True)
 class ParsedChannelRef:
