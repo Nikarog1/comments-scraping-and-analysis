@@ -10,8 +10,8 @@ from yt_comments.ingestion.channel_ref_parser import parse_channel_ref
 
 
 class JSONChannelRefRepository:
-    def __init__(self, data_root: Path):
-        self._data_root = data_root
+    def __init__(self, data_root: str | Path = "data"):
+        self._data_root = Path(data_root)
         
     def save(self, raw_input: str, channel_id: str) -> Path:
         normalized_ref = self._normalize_input_ref(raw_input)

@@ -19,8 +19,8 @@ class ParquetBasicStatsRepository:
       data/gold/basic_stats/<video_id>/stats.parquet
     """
     
-    def __init__(self, data_root: Path) -> None:
-        self._data_root = data_root
+    def __init__(self, data_root: str | Path = "data") -> None:
+        self._data_root = Path(data_root)
         
     def save(self, stats: BasicStats) -> None:
         path = basic_stats_path(self._data_root, stats.video_id)

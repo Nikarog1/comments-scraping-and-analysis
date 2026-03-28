@@ -15,8 +15,8 @@ class JSONChannelRunSummaryRepository:
     Layout:
       data/gold/channel_runs/<channel_id>/stats.parquet
     """
-    def __init__(self, data_root: Path):
-        self.data_root = data_root
+    def __init__(self, data_root: Path | str = "data"):
+        self.data_root = Path(data_root)
         
     def save(self,  summary: ChannelRunSummary) -> Path:
         

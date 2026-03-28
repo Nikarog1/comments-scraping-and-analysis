@@ -25,8 +25,8 @@ class ParquetCorpusDfRepository:
         ]
     )
     
-    def __init__(self, data_root: Path) -> None:
-        self._data_root = data_root
+    def __init__(self, data_root: str | Path = "data") -> None:
+        self._data_root = Path(data_root)
         
     def save(self, corpus: CorpusDfTable) -> None:
         path = tfidf_corpus_df_path(self._data_root)

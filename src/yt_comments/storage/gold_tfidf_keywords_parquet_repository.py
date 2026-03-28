@@ -24,8 +24,8 @@ class ParquetTfidfKeywordsRepository:
     Layout:
       <data_root>/gold/tfidf/<video_id>/keywords.parquet
     """
-    def __init__(self, data_root: Path) -> None:
-        self._data_root = data_root
+    def __init__(self, data_root: str | Path = "data") -> None:
+        self._data_root = Path(data_root)
         
     def save(self, keywords: TfidfKeywords) -> None:
         path = tfidf_keywords_path(self._data_root, keywords.video_id)
