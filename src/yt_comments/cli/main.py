@@ -13,6 +13,7 @@ from yt_comments.analysis.basic_stats.models import BasicStatsConfig
 from yt_comments.analysis.basic_stats.service import BasicStatsService
 from yt_comments.analysis.channel_runs.models import ChannelRunSummary
 from yt_comments.analysis.channel_stats.service import ChannelTokenStatsService
+from yt_comments.analysis.channel_tfidf.service import ChannelTfidfService
 from yt_comments.analysis.corpus.service import CorpusService
 from yt_comments.analysis.tfidf.models import TfidfConfig
 from yt_comments.analysis.tfidf.service import TfidfService
@@ -34,6 +35,7 @@ from yt_comments.storage.bronze_comments_repository import JSONLCommentsReposito
 from yt_comments.storage.gold_basic_stats_parquet_repository import ParquetBasicStatsRepository
 from yt_comments.storage.gold_channel_ref_mapping_repository import JSONChannelRefRepository
 from yt_comments.storage.gold_channel_run_summary_repository import JSONChannelRunSummaryRepository
+from yt_comments.storage.gold_channel_tfidf_repository import ParquetChannelTfidfKeywordsRepository
 from yt_comments.storage.gold_channel_token_stats_repository import ParquetChannelTokenStatsRepository
 from yt_comments.storage.gold_corpus_df_parquet_repository import ParquetCorpusDfRepository
 from yt_comments.storage.gold_tfidf_keywords_parquet_repository import ParquetTfidfKeywordsRepository
@@ -176,7 +178,7 @@ def build_parser() -> argparse.ArgumentParser:
     # TFIDF
     tfidf = subparser.add_parser(
         "tfidf", 
-        help="Compute Gold v2 TF-IDF from Silver"
+        help="Compute Gold TF-IDF from Silver"
     )
     tfidf.add_argument(
         "video", 
@@ -522,6 +524,110 @@ def build_parser() -> argparse.ArgumentParser:
         help="Normalize words so related forms (-ing, -ed, -s) collapse into one base form (default: none)\nCurrent supported mods: stem_en"
     )
     c_stats.set_defaults(func=run_channel_stats)
+
+    # TFIDF-CHANNEL
+    tfidf_channel = subparser.add_parser(
+        "tfidf-channel", 
+        help="Compute TF-IDF from channel Silver files"
+    )
+    tfidf_channel.add_argument(
+        "channelId", 
+        help="YouTube channel reference (channel ID, @handle, or URL)"
+    )
+    tfidf_channel.add_argument(
+        "--data-root", 
+        default="data", 
+        help="Project data directory (default: data)"
+    )
+    tfidf_channel.add_argument(
+        "--silver-dir", 
+        default="data/silver", 
+        help="Silver output directory (default: 'data/silver)"
+    )
+    tfidf_channel.add_argument(
+        "--top-k", 
+        type=int, 
+        default=30, 
+        help="Top K keywords (default: 30)"
+    )
+    tfidf_channel.add_argument(
+        "--min-token-len", 
+        type=int, 
+        default=2, 
+        help="Min token length (default: 2)"
+    )
+    tfidf_channel.add_argument(
+        "--min-df", 
+        type=int, 
+        default=2, 
+        help="Min token df, i.e., in how many documents token must appear (default: 2)"
+    )
+    tfidf_channel.add_argument(
+        "--max-df", 
+        type=float, 
+        default=0.9, 
+        help="Max token df fraction, i.e., drop tokens appearing in more documents in percents (default: 0.9)"
+    )
+    tfidf_channel.add_argument(
+        "--keep-numeric", 
+        action="store_true", 
+        help="Do not drop numeric tokens"
+    )
+    tfidf_channel.add_argument(
+        "--no-lowercase", 
+        action="store_true", 
+        help="Do not lowercase before tokenization"
+    )
+    tfidf_channel.add_argument(
+        "--keep-stopwords", 
+        action="store_true", 
+        help="Do not drop stopwords"
+    )
+    tfidf_channel.add_argument(
+        "--lang", 
+        default="en",
+        help="Stopwords language (default: en)"
+    )
+    tfidf_channel.add_argument(
+        "--batch-size", 
+        type=int, 
+        default=5000, 
+        help="Arrow batch size (default: 5000)"
+    )
+    tfidf_channel.add_argument(
+        "--ngram-min", 
+        type=int, 
+        default=1, 
+        help="Min ngram to be extracted (default: 1)"
+    )
+    tfidf_channel.add_argument(
+        "--ngram-max", 
+        type=int, 
+        default=1, 
+        help="Max ngram to be extracted (default: 1 - meaning extraction of unigrams only)"
+    )
+    tfidf_channel.add_argument(
+        "--min-ngram-df", 
+        type=int, 
+        default=2, 
+        help="Min df of ngram, i.e., in how many documents ngram must appear (default: 2)"
+    )
+    tfidf_channel.add_argument(
+        "--use-corpus",
+        action="store_true",
+        help="Use global corpus across all silver comments (default: False)"
+    )
+    tfidf_channel.add_argument(
+        "--keep-sentiment",
+        action="store_true",
+        help="Keep sentiment words in final result (default: False)"
+    )
+    tfidf_channel.add_argument(
+        "--stemming-mode",
+        default="none", 
+        help="Normalize words so related forms (-ing, -ed, -s) collapse into one base form (default: none)\nCurrent supported mods: stem_en"
+    )
+    tfidf_channel.set_defaults(func=run_tfidf_channel)
     
     return parser
 
@@ -1017,6 +1123,102 @@ def run_channel_stats(args: argparse.Namespace) -> int:
     else:
         print("top_tokens: (none)")
 
+    return 0
+
+
+def run_tfidf_channel(args: argparse.Namespace) -> int:
+
+    logger.info("Loading latest channel run summary | channel_id=%s", args.channelId)
+    channel_id = _load_channel_id_ref_mapping(
+        data_root=args.data_root,
+        raw_input=args.channelId,
+    )
+    logger.info(
+        "Resolved channel reference | channel_ref=%s | channel_id=%s",
+        args.channelId,
+        channel_id,
+    )
+    
+    logger.info("Extracting channel load metadata | channel_id=%s", channel_id)
+    summary_repo = JSONChannelRunSummaryRepository(data_root=args.data_root)
+    summary = summary_repo.load_latest(channel_id=channel_id)
+        
+    if args.ngram_min < 1:
+        logger.error("Invalid argument | --ngram-min must be >= 1")
+        return 2
+
+    if args.ngram_max < args.ngram_min:
+        logger.error("Invalid argument | --ngram-max must be >= --ngram-min")
+        return 2
+
+    if args.min_ngram_df < 1:
+        logger.error("Invalid argument | --min-ngram-df must be >= 1")
+        return 2
+    
+    if args.use_corpus:
+        logger.info("Loading global corpus")
+        corpus = ParquetCorpusDfRepository(data_root=args.data_root).load()
+    else:
+        corpus = None
+        
+    stopwords_hash = str(hash_config(sorted(STOPWORDS[args.lang])))
+
+    svc = ChannelTfidfService()
+    cfg = TfidfConfig(
+        top_k=args.top_k,
+        min_token_len=args.min_token_len,
+        drop_numeric_tokens=not args.keep_numeric,
+        lowercase=not args.no_lowercase,
+        drop_stopwords=not args.keep_stopwords,
+        stopwords_lang=args.lang,
+        stopwords_hash=stopwords_hash,
+        normalization=args.stemming_mode,
+        min_df=args.min_df,
+        max_df=args.max_df,
+        ngram_range=(args.ngram_min, args.ngram_max),
+        min_ngram_df=args.min_ngram_df,  
+    )
+    silver_repo = ParquetSilverCommentsRepository(args.silver_dir)
+    
+    logger.info(
+        "Starting TF-IDF computation | channel_id=%s use_corpus=%s",
+        channel_id,
+        args.use_corpus,
+    )
+    tfidf_channel = svc.compute_for_channel(
+        channel_id=channel_id,
+        video_ids=summary.video_ids,
+        config=cfg,
+        silver_repo=silver_repo,
+        created_at_utc=datetime.now(timezone.utc),
+        batch_size=args.batch_size,
+        global_corpus=corpus,
+        unfilter_sentiment=not args.keep_sentiment,  
+    )
+    
+    repo = ParquetChannelTfidfKeywordsRepository(data_root=args.data_root)
+    repo.save(tfidf_channel)
+    logger.info(
+        "TF-IDF completed | channel_id=%s rows=%s docs_used=%s keywords=%s",
+        tfidf_channel.channel_id,
+        tfidf_channel.row_count,
+        tfidf_channel.doc_count_non_empty,
+        len(tfidf_channel.keywords),
+    )
+    
+    print(f"channel_id: {tfidf_channel.channel_id}")
+    print(f"rows: {tfidf_channel.row_count} | empty_text: {tfidf_channel.empty_text_count} | docs_used: {tfidf_channel.doc_count_non_empty}")
+    print("top_keywords:")
+    
+    if not tfidf_channel.keywords:
+        print(" (none)")
+    else:
+        for i, kw in enumerate(tfidf_channel.keywords, start=1):
+            print(
+                f" {i:>2}. {kw.token:<15} "
+                f"score={kw.score:.3f} "
+                f"df={kw.df}"
+            )
     return 0
          
 
