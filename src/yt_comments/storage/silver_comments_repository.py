@@ -13,10 +13,10 @@ class ParquetSilverCommentsRepository:
     Silver layer repo: streaming parquet writer
     
     Layout:
-      data/silver/comments/video_id=<id>/comments.parquet
+      data/silver/video_id=<id>/comments.parquet
     """
     
-    def __init__(self, base_dir: Path | str = "data/silver/comments") -> None:
+    def __init__(self, base_dir: Path | str = "data/silver") -> None:
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
         
