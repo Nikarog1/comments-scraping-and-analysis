@@ -12,12 +12,13 @@ from yt_comments.analysis.features import hash_config
 from yt_comments.analysis.basic_stats.models import BasicStatsConfig
 from yt_comments.analysis.basic_stats.service import BasicStatsService
 from yt_comments.analysis.channel_runs.models import ChannelRunSummary
+from yt_comments.analysis.channel_stats.models import ChannelTokenStatsConfig
+from yt_comments.analysis.channel_stats.service import ChannelTokenStatsService
 from yt_comments.analysis.corpus.service import CorpusService
 from yt_comments.analysis.tfidf.models import TfidfConfig
 from yt_comments.analysis.tfidf.service import TfidfService
 
 from yt_comments.ingestion.channel_ref_parser import parse_channel_ref
-from yt_comments.ingestion.channel_video_discovery_client import StubChannelVideoDiscoveryClient
 from yt_comments.ingestion.channel_video_discovery_service import ChannelVideoDiscoveryService
 from yt_comments.ingestion.models import ChannelVideoDiscovery
 from yt_comments.ingestion.scrape_service import ScrapeCommentsService
@@ -34,6 +35,7 @@ from yt_comments.storage.bronze_comments_repository import JSONLCommentsReposito
 from yt_comments.storage.gold_basic_stats_parquet_repository import ParquetBasicStatsRepository
 from yt_comments.storage.gold_channel_ref_mapping_repository import JSONChannelRefRepository
 from yt_comments.storage.gold_channel_run_summary_repository import JSONChannelRunSummaryRepository
+from yt_comments.storage.gold_channel_token_stats_repository import ParquetChannelTokenStatsRepository
 from yt_comments.storage.gold_corpus_df_parquet_repository import ParquetCorpusDfRepository
 from yt_comments.storage.gold_tfidf_keywords_parquet_repository import ParquetTfidfKeywordsRepository
 from yt_comments.storage.silver_comments_repository import ParquetSilverCommentsRepository
@@ -452,6 +454,65 @@ def build_parser() -> argparse.ArgumentParser:
         help="Overwrite existing silver file",
     )
     preprocess_channel.set_defaults(func=run_preprocess_channel)
+
+    # CHANNEL STATS
+    c_stats = subparser.add_parser(
+        "stats-channel", 
+        help="Compute Gold v4 channel token stats from Silver"
+    )
+    c_stats.add_argument(
+        "channelId", 
+        help="YouTube channel reference (channel ID, @handle, or URL)"
+    )
+    c_stats.add_argument(
+        "--data-root", 
+        default="data", 
+        help="Project data directory (default: data)"
+    )
+    c_stats.add_argument(
+        "--top-n", 
+        type=int, 
+        default=30, 
+        help="Top N tokens (default: 30)"
+    )
+    c_stats.add_argument(
+        "--min-token-len", 
+        type=int, 
+        default=2, 
+        help="Min token length (default: 2)"
+    )
+    c_stats.add_argument(
+        "--keep-numeric", 
+        action="store_true", 
+        help="Do not drop numeric tokens"
+    )
+    c_stats.add_argument(
+        "--no-lowercase", 
+        action="store_true", 
+        help="Do not lowercase before tokenization"
+    )
+    c_stats.add_argument(
+        "--keep-stopwords", 
+        action="store_true", 
+        help="Do not drop stopwords"
+    )
+    c_stats.add_argument(
+        "--lang", 
+        default="en",
+        help="Stopwords language (default: en)"
+    )
+    c_stats.add_argument(
+        "--batch-size", 
+        type=int, 
+        default=5000, 
+        help="Arrow batch size (default: 5000)"
+    )
+    c_stats.add_argument(
+        "--stemming-mode",
+        default="none", 
+        help="Normalize words so related forms (-ing, -ed, -s) collapse into one base form (default: none)\nCurrent supported mods: stem_en"
+    )
+    c_stats.set_defaults(func=run_channel_stats)
     
     return parser
 
@@ -884,6 +945,71 @@ def run_preprocess_channel(args: argparse.Namespace) -> int:
     )         
     print(f"TOTAL | videos={summary.video_count} | errors={errors}")     
     return 1 if errors else 0
+
+def run_channel_stats(args: argparse.Namespace) -> int:
+    data_root = Path(args.data_root)
+     
+    logger.info("Loading latest channel run summary | channel_id=%s", args.channelId)
+    channel_id = _load_channel_id_ref_mapping(
+        data_root=args.data_root,
+        raw_input=args.channelId,
+    )
+    logger.info(
+        "Resolved channel reference | channel_ref=%s | channel_id=%s",
+        args.channelId,
+        channel_id,
+    )
+    
+    logger.info("Extracting channel load metadata | channel_id=%s", channel_id)
+    summary_repo = JSONChannelRunSummaryRepository(data_root=data_root)
+    summary = summary_repo.load_latest(channel_id=channel_id)
+
+    logger.info("Starting channel token stats computation | channel_id=%s", channel_id)
+    stopwords_hash = str(hash_config(sorted(STOPWORDS[args.lang])))
+    cfg = ChannelTokenStatsConfig(
+        top_n_tokens=args.top_n,
+        min_token_len=args.min_token_len,
+        drop_numeric_tokens=not args.keep_numeric,
+        lowercase=not args.no_lowercase,
+        drop_stopwords=not args.keep_stopwords,
+        stopwords_lang=args.lang,
+        stopwords_hash=stopwords_hash,
+        normalization=args.stemming_mode,
+    )
+
+    silver_repo = ParquetSilverCommentsRepository(data_root / "silver")
+    service = ChannelTokenStatsService()
+    stats = service.compute_for_channel(
+        channel_id=channel_id,
+        video_ids=summary.video_ids,
+        silver_repo=silver_repo,
+        config=cfg,
+        created_at_utc=datetime.now(timezone.utc),
+    )
+
+    repo = ParquetChannelTokenStatsRepository(data_root=data_root)
+    repo.save(stats)
+    logger.info(
+        "Channel token stats completed | channel_id=%s rows=%s total_tokens=%s unique_tokens=%s",
+        stats.channel_id,
+        stats.row_count,
+        stats.total_token_count,
+        stats.unique_token_count,
+    )
+
+    print(f"channel_id: {stats.channel_id}")
+    print(f"videos: {len(stats.video_ids)}")
+    print(f"rows: {stats.row_count} | empty_text: {stats.empty_text_count}")
+    print(
+        f"tokens: total={stats.total_token_count} | unique={stats.unique_token_count}"
+    )
+    if stats.top_tokens:
+        top_preview = ", ".join(f"{t.token}:{t.count}" for t in stats.top_tokens[:10])
+        print(f"top_tokens: {top_preview}")
+    else:
+        print("top_tokens: (none)")
+
+    return 0
          
 
 def _configure_logging(verbose: bool) -> None:
