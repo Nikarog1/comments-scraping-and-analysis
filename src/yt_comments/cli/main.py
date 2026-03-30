@@ -15,6 +15,7 @@ from yt_comments.analysis.channel_runs.models import ChannelRunSummary
 from yt_comments.analysis.channel_stats.service import ChannelTokenStatsService
 from yt_comments.analysis.channel_tfidf.service import ChannelTfidfService
 from yt_comments.analysis.corpus.service import CorpusService
+from yt_comments.analysis.distinctive_keywords.service import DistinctiveKeywordsService
 from yt_comments.analysis.tfidf.models import TfidfConfig
 from yt_comments.analysis.tfidf.service import TfidfService
 
@@ -38,6 +39,7 @@ from yt_comments.storage.gold_channel_run_summary_repository import JSONChannelR
 from yt_comments.storage.gold_channel_tfidf_repository import ParquetChannelTfidfKeywordsRepository
 from yt_comments.storage.gold_channel_token_stats_repository import ParquetChannelTokenStatsRepository
 from yt_comments.storage.gold_corpus_df_parquet_repository import ParquetCorpusDfRepository
+from yt_comments.storage.gold_distinctive_keywords_repository import ParquetDistinctiveKeywordsRepository
 from yt_comments.storage.gold_tfidf_keywords_parquet_repository import ParquetTfidfKeywordsRepository
 from yt_comments.storage.silver_comments_repository import ParquetSilverCommentsRepository
 
@@ -629,6 +631,26 @@ def build_parser() -> argparse.ArgumentParser:
     )
     tfidf_channel.set_defaults(func=run_tfidf_channel)
     
+    # DISTINCTIVE-KEYWORDS
+    distinctive_kws = subparser.add_parser(
+        "distinctive-keywords", 
+        help="Compute distinctive keywords for video from channel"
+    )
+    distinctive_kws.add_argument(
+        "channelId", 
+        help="YouTube channel reference (channel ID, @handle, or URL)"
+    )
+    distinctive_kws.add_argument(
+        "video", 
+        help="YouTube video URL or 11-character video ID"
+    )
+    distinctive_kws.add_argument(
+        "--data-root", 
+        default="data", 
+        help="Project data directory (default: data)"
+    )
+    distinctive_kws.set_defaults(func=run_distinctive_keywords)
+    
     return parser
 
     
@@ -1218,6 +1240,70 @@ def run_tfidf_channel(args: argparse.Namespace) -> int:
                 f" {i:>2}. {kw.token:<15} "
                 f"score={kw.score:.3f} "
                 f"df={kw.df}"
+            )
+    return 0
+
+
+def run_distinctive_keywords(args: argparse.Namespace) -> int:
+    video_id = extract_video_id(args.video)
+
+    logger.info("Loading latest channel run summary | channel_id=%s", args.channelId)
+    channel_id = _load_channel_id_ref_mapping(
+        data_root=args.data_root,
+        raw_input=args.channelId,
+    )
+    logger.info(
+        "Resolved channel reference | channel_ref=%s | channel_id=%s",
+        args.channelId,
+        channel_id,
+    )
+
+    logger.info("Extracting video keywords | video_id=%s", video_id)
+    repo_vid = ParquetTfidfKeywordsRepository(data_root=args.data_root)
+    tfidf_vid = repo_vid.load(video_id)
+    
+    logger.info("Extracting channel keywords | channel_id=%s", channel_id)
+    repo_channel = ParquetChannelTfidfKeywordsRepository(data_root=args.data_root)
+    tfidf_channel = repo_channel.load(channel_id)
+
+    svc = DistinctiveKeywordsService()
+    
+    logger.info(
+        "Starting distinctive keywords computation | channel_id=%s | video_id=%s",
+        channel_id,
+        video_id,
+    )
+    result = svc.compute_for_video(
+        video_tfidf=tfidf_vid,
+        channel_tfidf=tfidf_channel,
+        created_at_utc=datetime.now(timezone.utc),
+    )
+    
+    repo = ParquetDistinctiveKeywordsRepository(data_root=args.data_root)
+    repo.save(result)
+    logger.info(
+        "Distinctive keywords completed | channel_id=%s video_id=%s keyword_count=%s",
+        result.channel_id,
+        result.video_id,
+        result.keyword_count,
+    )
+    
+    print(f"channel_id: {result.channel_id}")
+    print(f"video_id: {result.video_id}")
+    print(f"keyword_count: {result.keyword_count}")
+    print("top_keywords:")
+    
+    if not result.keywords:
+        print(" (none)")
+    else:
+        for i, kw in enumerate(result.keywords, start=1):
+            print(
+                f" {i:>2}. {kw.token:<15} "
+                f"lift={kw.lift:.3f} "
+                f"video_score={kw.video_score:.3f} "
+                f"channel_score={kw.channel_score:.3f} "
+                f"video_df={kw.video_df} "
+                f"channel_df={kw.channel_df}"
             )
     return 0
          
