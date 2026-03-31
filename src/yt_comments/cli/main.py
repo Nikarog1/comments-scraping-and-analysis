@@ -651,6 +651,32 @@ def build_parser() -> argparse.ArgumentParser:
     )
     distinctive_kws.set_defaults(func=run_distinctive_keywords)
     
+    # REPORT-CHANNEL
+    report_channel = subparser.add_parser(
+        "report-channel", 
+        help="Print compact report from existing Gold channel artifacts"
+    )
+    report_channel.add_argument(
+        "channelId", 
+        help="YouTube channel reference (channel ID, @handle, or URL)"
+    )
+    report_channel.add_argument(
+        "--data-root", 
+        default="data", 
+        help="Project data directory (default: data)"
+    )
+    report_channel.add_argument(
+        "--video",
+        help="Optional YouTube video URL or 11-character video ID for distinctive keywords section"
+    )
+    report_channel.add_argument(
+        "--top-k", 
+        type=int, 
+        default=30, 
+        help="Top K keywords (default: 30)"
+    )
+    report_channel.set_defaults(func=run_report_channel)
+    
     return parser
 
     
@@ -1306,6 +1332,83 @@ def run_distinctive_keywords(args: argparse.Namespace) -> int:
                 f"channel_df={kw.channel_df}"
             )
     return 0
+
+def run_report_channel(args: argparse.Namespace) -> int:
+    logger.info("Loading latest channel run summary | channel_id=%s", args.channelId)
+    channel_id = _load_channel_id_ref_mapping(
+        data_root=args.data_root,
+        raw_input=args.channelId,
+    )
+    logger.info(
+        "Resolved channel reference | channel_ref=%s | channel_id=%s",
+        args.channelId,
+        channel_id,
+    )
+    
+    summary_repo = JSONChannelRunSummaryRepository(data_root=args.data_root)
+    stats_repo = ParquetChannelTokenStatsRepository(data_root=args.data_root)
+    tfidf_repo = ParquetChannelTfidfKeywordsRepository(data_root=args.data_root)
+
+    summary = summary_repo.load_latest(channel_id=channel_id)
+    stats = stats_repo.load(channel_id=channel_id)
+    tfidf = tfidf_repo.load(channel_id=channel_id)
+    
+    distinctive = None
+    video_id = None
+    if args.video:
+        video_id = extract_video_id(args.video)
+        distinctive_repo = ParquetDistinctiveKeywordsRepository(data_root=args.data_root)
+        distinctive = distinctive_repo.load(channel_id=channel_id, video_id=video_id)
+
+    print(f"channel_id: {channel_id}")
+    print(
+        f"latest_run: videos={summary.video_count} | "
+        f"comments={summary.comment_count} | "
+        f"errors={summary.error_count}"
+    )
+    print(
+        f"run_window: "
+        f"after={_format_optional_dt(summary.published_after)} | "
+        f"before={_format_optional_dt(summary.published_before)}"
+    )
+    print(
+        f"artifacts: preprocess_version={stats.preprocess_version} | "
+        f"stats_config={stats.config_hash} | "
+        f"tfidf_config={tfidf.config_hash}"
+    )
+
+    print("top_tokens:")
+    if not stats.top_tokens:
+        print(" (none)")
+    else:
+        for i, token in enumerate(stats.top_tokens[:args.top_k], start=1):
+            print(f" {i:>2}. {token.token:<15} count={token.count}")
+
+    print("top_keywords:")
+    if not tfidf.keywords:
+        print(" (none)")
+    else:
+        for i, kw in enumerate(tfidf.keywords[:args.top_k], start=1):
+            print(
+                f" {i:>2}. {kw.token:<15} "
+                f"score={kw.score:.3f} "
+                f"df={kw.df}"
+            )
+
+    if distinctive is not None:
+        print(f"distinctive_keywords: video_id={video_id}")
+        if not distinctive.keywords:
+            print(" (none)")
+        else:
+            for i, kw in enumerate(distinctive.keywords[:args.top_k], start=1):
+                print(
+                    f" {i:>2}. {kw.token:<15} "
+                    f"lift={kw.lift:.3f} "
+                    f"video_df={kw.video_df} "
+                    f"channel_df={kw.channel_df}"
+                )
+
+    return 0
          
 
 def _configure_logging(verbose: bool) -> None:
@@ -1354,3 +1457,8 @@ def _load_channel_id_ref_mapping(*, data_root: str, raw_input: str) -> str:
         return JSONChannelRefRepository(data_root=Path(data_root)).load(raw_input=raw_input)
     except:
          return raw_input
+    
+def _format_optional_dt(value: datetime | None) -> str:
+    if value is None:
+        return "N/A"
+    return value.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
