@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import argparse
-import logging
 import sys
 
 from pathlib import Path
@@ -19,13 +18,16 @@ from yt_comments.analysis.distinctive_keywords.service import DistinctiveKeyword
 from yt_comments.analysis.tfidf.models import TfidfConfig
 from yt_comments.analysis.tfidf.service import TfidfService
 
+from yt_comments.cli.helpers import (
+    _configure_logging, _format_optional_dt, _load_channel_id_ref_mapping, _parse_cli_datetime,
+    _save_channel_id_ref_mapping, _scrape_video, _silver_parquet_path, logger
+)
+
 from yt_comments.ingestion.channel_ref_parser import parse_channel_ref
 from yt_comments.ingestion.channel_video_discovery_service import ChannelVideoDiscoveryService
 from yt_comments.ingestion.models import ChannelVideoDiscovery
-from yt_comments.ingestion.scrape_service import ScrapeCommentsService
 from yt_comments.ingestion.video_id_extractor import extract_video_id
 from yt_comments.ingestion.youtube_api_client import YouTubeApiClient
-from yt_comments.ingestion.youtube_client import StubYouTubeClient
 
 from yt_comments.nlp.stopwords import STOPWORDS
 
@@ -47,9 +49,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-
-logger = logging.getLogger(__name__)
-LOG_FORMAT = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="yt-comments")
@@ -1409,56 +1408,3 @@ def run_report_channel(args: argparse.Namespace) -> int:
                 )
 
     return 0
-         
-
-def _configure_logging(verbose: bool) -> None:
-    level = logging.INFO if verbose else logging.WARNING
-    logging.basicConfig(level=level, format=LOG_FORMAT)
-
-
-def _silver_parquet_path(data_root: Path, video_id: str) -> Path:
-    return data_root / "silver" / video_id / "comments.parquet"
-
-
-def _parse_cli_datetime(value: str) -> datetime:
-    try:
-        dt = datetime.fromisoformat(value)
-    except ValueError as e:
-        raise argparse.ArgumentTypeError(
-            f"Invalid datetime '{value}'. Use ISO format like "
-            "2026-01-01 or 2026-01-01T12:00:00"
-        ) from e
-
-    # If user passed only a date → assume midnight
-    # datetime.fromisoformat already handles this.
-
-    # If timezone missing → assume UTC
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-
-    return dt
-
-def _scrape_video(
-          *,
-          video_id: str,
-          client: YouTubeApiClient | StubYouTubeClient,
-          repo: JSONLCommentsRepository,
-          limit: int | None,
-          overwrite: bool,
-):
-     service = ScrapeCommentsService(client=client, repo=repo)
-     return service.run(video_id, overwrite=overwrite, limit=limit)
-
-def _save_channel_id_ref_mapping(*, data_root: str, raw_input: str, channel_id: str) -> Path:
-     return JSONChannelRefRepository(data_root=Path(data_root)).save(raw_input=raw_input, channel_id=channel_id)
-
-def _load_channel_id_ref_mapping(*, data_root: str, raw_input: str) -> str:
-    try: 
-        return JSONChannelRefRepository(data_root=Path(data_root)).load(raw_input=raw_input)
-    except:
-         return raw_input
-    
-def _format_optional_dt(value: datetime | None) -> str:
-    if value is None:
-        return "N/A"
-    return value.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
