@@ -4,15 +4,11 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
 
-A Python 3.11 project for **scraping YouTube comments and performing deterministic NLP analysis** without LLMs.
+A Python 3.11 deterministic pipeline for **scraping and analyzing YouTube comments using classical NLP (no LLMs).**
 
-The system is built as a **data pipeline with Bronze / Silver / Gold layers**, focusing on:
+The system designed for reproducibility and inspectable intermediate data.
 
-- reproducibility
-- deterministic outputs
-- clean architecture
-- scalable data processing
-- minimal external dependencies
+NOTE: the project at this stage supports only English comments!
 
 ---
 
@@ -27,22 +23,65 @@ py -m pip install -e ".[dev]"
 
 ---
 
-# Example Workflow
+# Quick Start
 
 Use --help to get more information on each command and its arguments.
 
 <video_id> can be either pure YouTube video id or just a normal URL.
 
+<channel_id> can be pure URL, a handle, or API id. Note that you should use the same format in the whole pipeline except API id which can be used in ANY point.
+
+**Single video analysis:**
 ```bash
+# Scrape comments
 yt_comments scrape <video_id>
+
+# Preprocess
 yt_comments preprocess <video_id>
+
+# Build analytics
 yt_comments stats <video_id>
 yt_comments tfidf <video_id>
 
-# optional cross-video corpus
+# OPTIONAL: cross-video corpus
 yt_comments corpus
 yt_comments tfidf <video_id> --use-corpus
 ```
+
+**Channel videos analysis:**
+```bash
+# Discover videos
+py -m yt_comments discover-videos <channel_id>
+
+# Scrape comments
+py -m yt_comments scrape-channel <channel_id>
+
+# Preprocess
+py -m yt_comments preprocess-channel <channel_id>
+
+# Build analytics
+py -m yt_comments channel-stats <channel_id>
+py -m yt_comments channel-tfidf <channel_id>
+
+# Final report (no recomputation)
+py -m yt_comments report-channel <channel_id>
+```
+
+---
+
+# Pipeline
+
+YouTube API
+   ↓
+Bronze  → raw comments (JSONL)
+   ↓
+Silver  → cleaned text (Parquet)
+   ↓
+Gold    → analytical artifacts (stats, TF-IDF, channel analytics)
+
+- Each layer is materialized to disk
+- No hidden state — everything is reproducible
+- Later steps never mutate earlier data
 
 ---
 
@@ -52,13 +91,23 @@ The pipeline follows a **Bronze → Silver → Gold** design.
 
 YouTube API -> Bronze (raw comments) -> Silver (cleaned comments) -> Gold (analytical artifacts)
 
-Each stage has a clearly defined responsibility:
+## Data Layout
 
-| Layer | Responsibility |
-|------|---------------|
-| Bronze | Raw data ingestion from the YouTube API |
-| Silver | Deterministic preprocessing and normalization |
-| Gold | Analytical artifacts derived from the corpus |
+data/
+  bronze/
+    <video_id>.jsonl
+
+  silver/
+    <video_id>/comments.parquet
+
+  gold/
+    basic_stats/
+    tfidf/
+    corpus/
+    channel_runs/
+    channel_stats/
+    channel_tfidf/
+    distinctive_keywords/
 
 ## Data Layers
 
@@ -406,20 +455,6 @@ This filtering step removes conversational praise phrases while preserving topic
 Filtering rules are versioned via:
 
 KEYWORD_QUALITY_VERSION
-
----
-
-# Future Extensions
-
-Potentional next stages:
-
-- lemmatization
-- multi-language support
-- topic clustering
-- incremental corpus updates
-- semantic embeddings
-- channel-level analytics
-- visualization dashboards
 
 ---
 
