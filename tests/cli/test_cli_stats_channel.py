@@ -38,9 +38,9 @@ def test_cli_stats_channel(capsys, tmp_path: Path):
     mock_service.compute_for_channel.return_value = stats
     
     with (
-        patch("yt_comments.cli.main._load_channel_id_ref_mapping", return_value=channel_id),
-        patch("yt_comments.cli.main.JSONChannelRunSummaryRepository", return_value=mock_summary_repo),
-        patch("yt_comments.cli.main.ChannelTokenStatsService", return_value=mock_service),
+        patch("yt_comments.cli.commands.channel._load_channel_id_ref_mapping", return_value=channel_id),
+        patch("yt_comments.cli.commands.channel.JSONChannelRunSummaryRepository", return_value=mock_summary_repo),
+        patch("yt_comments.cli.commands.channel.ChannelTokenStatsService", return_value=mock_service),
     ):
         exit_code = main(
             [

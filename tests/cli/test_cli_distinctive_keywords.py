@@ -67,9 +67,9 @@ def test_cli_distinctive_keywords_writes_gold_artifact(tmp_path: Path, capsys) -
     mock_repo_channel.load.return_value = channel_tfidf
 
     with (
-        patch("yt_comments.cli.main._load_channel_id_ref_mapping", return_value=channel_id),
-        patch("yt_comments.cli.main.ParquetTfidfKeywordsRepository", return_value=mock_repo_vid),
-        patch("yt_comments.cli.main.ParquetChannelTfidfKeywordsRepository", return_value=mock_repo_channel),
+        patch("yt_comments.cli.commands.channel._load_channel_id_ref_mapping", return_value=channel_id),
+        patch("yt_comments.cli.commands.channel.ParquetTfidfKeywordsRepository", return_value=mock_repo_vid),
+        patch("yt_comments.cli.commands.channel.ParquetChannelTfidfKeywordsRepository", return_value=mock_repo_channel),
     ):
         exit_code = main(
             [

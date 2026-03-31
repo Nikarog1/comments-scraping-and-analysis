@@ -62,15 +62,15 @@ def test_cli_scrape_channel(capsys, tmp_path: Path):
     with (
         patch.dict("os.environ", {"YOUTUBE_API_KEY": "test-key"}), 
         patch(
-            "yt_comments.cli.main.YouTubeApiClient",
+            "yt_comments.cli.commands.channel.YouTubeApiClient",
             return_value=mock_client,
         ), 
         patch(
-            "yt_comments.cli.main.ChannelVideoDiscoveryService",
+            "yt_comments.cli.commands.channel.ChannelVideoDiscoveryService",
             return_value=mock_discovery_service,
         ), 
         patch(
-            "yt_comments.cli.main._scrape_video",
+            "yt_comments.cli.commands.channel._scrape_video",
             side_effect=[scrape_result_1, scrape_result_2, scrape_result_3],
         ) as mock_scrape_videos
     ):

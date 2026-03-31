@@ -52,8 +52,8 @@ def test_cli_channel_tfidf_writes_gold_artifact(tmp_path: Path, capsys) -> None:
     mock_summary_repo.load_latest.return_value = FakeSum()
 
     with (
-        patch("yt_comments.cli.main._load_channel_id_ref_mapping", return_value=channel_id),
-        patch("yt_comments.cli.main.JSONChannelRunSummaryRepository", return_value=mock_summary_repo),
+        patch("yt_comments.cli.commands.channel._load_channel_id_ref_mapping", return_value=channel_id),
+        patch("yt_comments.cli.commands.channel.JSONChannelRunSummaryRepository", return_value=mock_summary_repo),
     ):
         exit_code = main(
             [
@@ -93,8 +93,8 @@ def test_cli_tfidf_channel_invalid_ngram_range_returns_2(tmp_path: Path, capsys)
     mock_summary_repo.load_latest.return_value = FakeSum()
 
     with (
-        patch("yt_comments.cli.main._load_channel_id_ref_mapping", return_value=channel_id),
-        patch("yt_comments.cli.main.JSONChannelRunSummaryRepository", return_value=mock_summary_repo),
+        patch("yt_comments.cli.commands.channel._load_channel_id_ref_mapping", return_value=channel_id),
+        patch("yt_comments.cli.commands.channel.JSONChannelRunSummaryRepository", return_value=mock_summary_repo),
     ):
         exit_code = main(
             [

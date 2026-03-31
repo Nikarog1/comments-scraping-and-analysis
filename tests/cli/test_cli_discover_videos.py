@@ -42,11 +42,11 @@ def test_cli_discover_videos(capsys):
     with (
         patch.dict("os.environ", {"YOUTUBE_API_KEY": "test-key"}), 
         patch(
-            "yt_comments.cli.main.YouTubeApiClient",
+            "yt_comments.cli.commands.channel.YouTubeApiClient",
             return_value=mock_client,
         ), 
         patch(
-            "yt_comments.cli.main.ChannelVideoDiscoveryService",
+            "yt_comments.cli.commands.channel.ChannelVideoDiscoveryService",
             return_value=mock_discovery_service,
         ), 
     ):

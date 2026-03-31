@@ -121,11 +121,11 @@ def test_cli_report_channel_with_distinctive_keywords_prints_output(capsys, tmp_
     mock_repo_distinctive_kws.load.return_value = distinctive_kws
     
     with (
-        patch("yt_comments.cli.main._load_channel_id_ref_mapping", return_value=channel_id),
-        patch("yt_comments.cli.main.JSONChannelRunSummaryRepository", return_value=mock_repo_summary),
-        patch("yt_comments.cli.main.ParquetChannelTokenStatsRepository", return_value=mock_repo_stats),
-        patch("yt_comments.cli.main.ParquetChannelTfidfKeywordsRepository", return_value=mock_repo_tfidf),
-        patch("yt_comments.cli.main.ParquetDistinctiveKeywordsRepository", return_value=mock_repo_distinctive_kws),
+        patch("yt_comments.cli.commands.channel._load_channel_id_ref_mapping", return_value=channel_id),
+        patch("yt_comments.cli.commands.channel.JSONChannelRunSummaryRepository", return_value=mock_repo_summary),
+        patch("yt_comments.cli.commands.channel.ParquetChannelTokenStatsRepository", return_value=mock_repo_stats),
+        patch("yt_comments.cli.commands.channel.ParquetChannelTfidfKeywordsRepository", return_value=mock_repo_tfidf),
+        patch("yt_comments.cli.commands.channel.ParquetDistinctiveKeywordsRepository", return_value=mock_repo_distinctive_kws),
     ):
         exit_code = main(
             [
@@ -221,10 +221,10 @@ def test_cli_report_channel_without_distinctive_keywords_prints_output(capsys, t
     mock_repo_tfidf.load.return_value = tfidf
     
     with (
-        patch("yt_comments.cli.main._load_channel_id_ref_mapping", return_value=channel_id),
-        patch("yt_comments.cli.main.JSONChannelRunSummaryRepository", return_value=mock_repo_summary),
-        patch("yt_comments.cli.main.ParquetChannelTokenStatsRepository", return_value=mock_repo_stats),
-        patch("yt_comments.cli.main.ParquetChannelTfidfKeywordsRepository", return_value=mock_repo_tfidf),
+        patch("yt_comments.cli.commands.channel._load_channel_id_ref_mapping", return_value=channel_id),
+        patch("yt_comments.cli.commands.channel.JSONChannelRunSummaryRepository", return_value=mock_repo_summary),
+        patch("yt_comments.cli.commands.channel.ParquetChannelTokenStatsRepository", return_value=mock_repo_stats),
+        patch("yt_comments.cli.commands.channel.ParquetChannelTfidfKeywordsRepository", return_value=mock_repo_tfidf),
     ):
         exit_code = main(
             [
