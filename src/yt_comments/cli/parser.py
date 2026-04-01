@@ -20,7 +20,7 @@ def build_parser() -> argparse.ArgumentParser:
         "-v", 
         "--verbose", 
         action="store_true", 
-        help="Enable debug logging"
+        help="Enable verbose (debug) logging"
     )
     
     subparser = parser.add_subparsers(dest="command", required=True)
@@ -28,7 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
     # SCRAPE
     scrape = subparser.add_parser(
         "scrape", 
-        help="Scrape comments from a YouTube video"
+        help="Fetch comments from a YouTube video"
     )
     scrape.add_argument(
         "video", 
@@ -43,20 +43,20 @@ def build_parser() -> argparse.ArgumentParser:
     scrape.add_argument(
         "--bronze-dir", 
         default="data/bronze", 
-        help="Bronze output directory (default: 'data/bronze')"
+        help="Output directory for Bronze data (default: data/bronze)"
     )
     scrape.add_argument(
         "--overwrite",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="Overwrite existing bronze file",
+        help="Overwrite existing Bronze file if it exists",
     )
     scrape.set_defaults(func=run_scrape)
     
     # PREPROCESS
     preprocess = subparser.add_parser(
         "preprocess", 
-        help="Build Silver parquet from Bronze JSONL"
+        help="Convert Bronze JSONL into Silver parquet"
     )
     preprocess.add_argument(
         "video", 
@@ -65,31 +65,31 @@ def build_parser() -> argparse.ArgumentParser:
     preprocess.add_argument(
         "--bronze-dir", 
         default="data/bronze", 
-        help="Bronze output directory (default: 'data/bronze')"
+        help="Input Bronze directory (default: data/bronze)"
         )
     preprocess.add_argument(
         "--silver-dir", 
         default="data/silver", 
-        help="Silver output directory (default: 'data/silver)"
+        help="Output Silver directory (default: data/silver)"
         )
     preprocess.add_argument(
         "--batch-size", 
         type=int, 
         default=5000, 
-        help="Rows per parquet write batch"
+        help="Number of rows per parquet write batch"
         )
     preprocess.add_argument(
         "--overwrite",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="Overwrite existing silver file",
+        help="Overwrite existing Silver file if it exists",
     )
     preprocess.set_defaults(func=run_preprocess)
     
     # STATS
     b_stats = subparser.add_parser(
         "stats", 
-        help="Compute Gold v1 basic stats from Silver"
+        help="Compute basic token statistics (Gold v1) from Silver data"
     )
     b_stats.add_argument(
         "video", 
@@ -104,28 +104,28 @@ def build_parser() -> argparse.ArgumentParser:
         "--top-n", 
         type=int, 
         default=30, 
-        help="Top N tokens (default: 30)"
+        help="Number of top tokens to return (default: 30)"
     )
     b_stats.add_argument(
         "--min-token-len", 
         type=int, 
         default=2, 
-        help="Min token length (default: 2)"
+        help="Minimum token length (default: 2)"
     )
     b_stats.add_argument(
         "--keep-numeric", 
         action="store_true", 
-        help="Do not drop numeric tokens"
+        help="Keep numeric tokens"
     )
     b_stats.add_argument(
         "--no-lowercase", 
         action="store_true", 
-        help="Do not lowercase before tokenization"
+        help="Disable lowercasing before tokenization"
     )
     b_stats.add_argument(
         "--keep-stopwords", 
         action="store_true", 
-        help="Do not drop stopwords"
+        help="Keep stopwords"
     )
     b_stats.add_argument(
         "--lang", 
@@ -143,7 +143,7 @@ def build_parser() -> argparse.ArgumentParser:
     # TFIDF
     tfidf = subparser.add_parser(
         "tfidf", 
-        help="Compute Gold TF-IDF from Silver"
+        help="Compute TF-IDF keywords (Gold) from Silver data"
     )
     tfidf.add_argument(
         "video", 
@@ -158,40 +158,40 @@ def build_parser() -> argparse.ArgumentParser:
         "--top-k", 
         type=int, 
         default=30, 
-        help="Top K keywords (default: 30)"
+        help="Number of top keywords to return (default: 30)"
     )
     tfidf.add_argument(
         "--min-token-len", 
         type=int, 
         default=2, 
-        help="Min token length (default: 2)"
+        help="Minimum token length (default: 2)"
     )
     tfidf.add_argument(
         "--min-df", 
         type=int, 
         default=2, 
-        help="Min token df, i.e., in how many documents token must appear (default: 2)"
+        help="Minimum document frequency (number of documents a token must appear in)"
     )
     tfidf.add_argument(
         "--max-df", 
         type=float, 
         default=0.9, 
-        help="Max token df fraction, i.e., drop tokens appearing in more documents in percents (default: 0.9)"
+        help="Maximum document frequency (fraction of documents; tokens above are dropped)"
     )
     tfidf.add_argument(
         "--keep-numeric", 
         action="store_true", 
-        help="Do not drop numeric tokens"
+        help="Keep numeric tokens"
     )
     tfidf.add_argument(
         "--no-lowercase", 
         action="store_true", 
-        help="Do not lowercase before tokenization"
+        help="Disable lowercasing before tokenization"
     )
     tfidf.add_argument(
         "--keep-stopwords", 
         action="store_true", 
-        help="Do not drop stopwords"
+        help="Keep stopwords"
     )
     tfidf.add_argument(
         "--lang", 
@@ -208,41 +208,41 @@ def build_parser() -> argparse.ArgumentParser:
         "--ngram-min", 
         type=int, 
         default=1, 
-        help="Min ngram to be extracted (default: 1)"
+        help="Minimum n-gram size (default: 1)"
     )
     tfidf.add_argument(
         "--ngram-max", 
         type=int, 
         default=1, 
-        help="Max ngram to be extracted (default: 1 - meaning extraction of unigrams only)"
+        help="Maximum n-gram size (default: 1, i.e. unigrams only)"
     )
     tfidf.add_argument(
         "--min-ngram-df", 
         type=int, 
         default=2, 
-        help="Min df of ngram, i.e., in how many documents ngram must appear (default: 2)"
+        help="Minimum document frequency for n-grams (default: 2)"
     )
     tfidf.add_argument(
         "--use-corpus",
         action="store_true",
-        help="Use global corpus across all silver comments (default: False)"
+        help="Use global corpus for IDF calculation"
     )
     tfidf.add_argument(
         "--keep-sentiment",
         action="store_true",
-        help="Keep sentiment words in final result (default: False)"
+        help="Keep sentiment-related tokens in the final output"
     )
     tfidf.add_argument(
         "--stemming-mode",
         default="none", 
-        help="Normalize words so related forms (-ing, -ed, -s) collapse into one base form (default: none)\nCurrent supported mods: stem_en"
+        help="Normalize words (e.g., -ing, -ed, -s → base form). Supported: stem_en"
     )
     tfidf.set_defaults(func=run_tfidf)
 
     # CORPUS
     corpus = subparser.add_parser(
         "corpus", 
-        help="Compute corpus across silver comments"
+        help="Build a global corpus from all Silver comments"
     )
     corpus.add_argument(
         "--data-root", 
@@ -253,28 +253,28 @@ def build_parser() -> argparse.ArgumentParser:
         "--min-df", 
         type=int, 
         default=2, 
-        help="Min token df, i.e., in how many documents token must appear (default: 2)"
+        help="Minimum document frequency"
     )
     corpus.add_argument(
         "--max-df", 
         type=float, 
         default=0.9, 
-        help="Max token df fraction, i.e., drop tokens appearing in more documents in percents (default: 0.9)"
+        help="Maximum document frequency (fraction)"
     )
     corpus.add_argument(
         "--keep-numeric", 
         action="store_true", 
-        help="Do not drop numeric tokens"
+        help="Keep numeric tokens"
     )
     corpus.add_argument(
         "--no-lowercase", 
         action="store_true", 
-        help="Do not lowercase before tokenization"
+        help="Disable lowercasing before tokenization"
     )
     corpus.add_argument(
         "--keep-stopwords", 
         action="store_true", 
-        help="Do not drop stopwords"
+        help="Keep stopwords"
     )
     corpus.add_argument(
         "--lang", 
@@ -291,46 +291,46 @@ def build_parser() -> argparse.ArgumentParser:
         "--ngram-min", 
         type=int, 
         default=1, 
-        help="Min ngram to be extracted (default: 1)"
+        help="Minimum n-gram size (default: 1)"
     )
     corpus.add_argument(
         "--ngram-max", 
         type=int, 
         default=1, 
-        help="Max ngram to be extracted (default: 1 - meaning extraction of unigrams only)"
+        help="Maximum n-gram size (default: 1, i.e. unigrams only)"
     )
     corpus.add_argument(
         "--min-ngram-df", 
         type=int, 
         default=2, 
-        help="Min df of ngram, i.e., in how many documents ngram must appear (default: 2)"
+        help="Minimum document frequency for n-grams (default: 2)"
     )
     corpus.set_defaults(func=run_corpus)
     
     # DISCOVER_VIDEOS
     discover_vids = subparser.add_parser(
         "discover-videos", 
-        help="List available videos on the provided channel"
+        help="List videos available on a channel"
     )
     discover_vids.add_argument(
         "channelId", 
-        help="YouTube channel reference (channel ID, @handle, or URL)"
+        help="YouTube channel reference (ID, @handle, or URL)"
     )
     discover_vids.add_argument(
         "--limit", 
         type=int, 
         default=100, 
-        help="Maximum number of videos to list"
+        help="Maximum number of videos to return"
     )
     discover_vids.add_argument(
         "--published-after", 
         type=_parse_cli_datetime, 
-        help="Include videos published AFTER the specified date"
+        help="Include only videos published after this date"
     )
     discover_vids.add_argument(
         "--published-before", 
         type=_parse_cli_datetime, 
-        help="Include videos published BEFORE the specified date"
+        help="Include only videos published before this date"
     )
     discover_vids.add_argument(
         "--data-root", 
@@ -342,33 +342,33 @@ def build_parser() -> argparse.ArgumentParser:
     # SCRAPE-CHANNEL
     scrape_channel = subparser.add_parser(
         "scrape-channel", 
-        help="Scrape comments from videos from a YouTube channel"
+        help="Fetch comments for videos from a channel"
     )
     scrape_channel.add_argument(
         "channelId", 
-        help="YouTube channel reference (channel ID, @handle, or URL)"
+        help="YouTube channel reference (ID, @handle, or URL)"
     )
     scrape_channel.add_argument(
         "--video-limit", 
         type=int, 
         default=100, 
-        help="Maximum number of videos to list"
+        help="Maximum number of videos to process"
     )
     scrape_channel.add_argument(
         "--comments-limit", 
         type=int, 
         default=5000, 
-        help="Maximum number of comments to fetch from each video"
+        help="Maximum number of comments per video"
     )
     scrape_channel.add_argument(
         "--published-after", 
         type=_parse_cli_datetime, 
-        help="Include videos published AFTER the specified date"
+        help="Include only videos published after this date"
     )
     scrape_channel.add_argument(
         "--published-before", 
         type=_parse_cli_datetime, 
-        help="Include videos published BEFORE the specified date"
+        help="Include only videos published before this date"
     )
     scrape_channel.add_argument(
         "--data-root", 
@@ -378,20 +378,20 @@ def build_parser() -> argparse.ArgumentParser:
     scrape_channel.add_argument(
         "--bronze-dir", 
         default="data/bronze", 
-        help="Bronze output directory (default: 'data/bronze')"
+        help="Output directory for Bronze data (default: data/bronze)"
     )
     scrape_channel.add_argument(
         "--overwrite",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="Overwrite existing bronze file",
+        help="Overwrite existing Bronze files if they exist",
     )
     scrape_channel.set_defaults(func=run_scrape_channel)
 
     # PREPROCESS-CHANNEL
     preprocess_channel = subparser.add_parser(
         "preprocess-channel", 
-        help="Build Silver parquet from Bronze JSONL from a YouTube channel comments"
+        help="Convert Bronze JSONL comments for a channel into Silver parquet"
     )
     preprocess_channel.add_argument(
         "channelId", 
@@ -405,31 +405,32 @@ def build_parser() -> argparse.ArgumentParser:
     preprocess_channel.add_argument(
         "--bronze-dir", 
         default="data/bronze", 
-        help="Bronze output directory (default: 'data/bronze')"
-        )
+        help="Input Bronze directory (default: data/bronze)"
+    )
     preprocess_channel.add_argument(
         "--silver-dir", 
         default="data/silver", 
-        help="Silver output directory (default: 'data/silver)"
-        )
+        help="Output Silver directory (default: data/silver)"
+    )
     preprocess_channel.add_argument(
         "--batch-size", 
         type=int, 
         default=5000, 
-        help="Rows per parquet write batch"
-        )
+        help="Number of rows per parquet write batch"
+    )
     preprocess_channel.add_argument(
         "--overwrite",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="Overwrite existing silver file",
+        help="Overwrite existing Silver files if they exist",
     )
     preprocess_channel.set_defaults(func=run_preprocess_channel)
+
 
     # CHANNEL STATS
     c_stats = subparser.add_parser(
         "stats-channel", 
-        help="Compute Gold v4 channel token stats from Silver"
+        help="Compute channel-level token statistics (Gold v4) from Silver data"
     )
     c_stats.add_argument(
         "channelId", 
@@ -443,34 +444,34 @@ def build_parser() -> argparse.ArgumentParser:
     c_stats.add_argument(
         "--silver-dir", 
         default="data/silver", 
-        help="Silver output directory (default: 'data/silver)"
-        )
+        help="Silver data directory (default: data/silver)"
+    )
     c_stats.add_argument(
         "--top-n", 
         type=int, 
         default=30, 
-        help="Top N tokens (default: 30)"
+        help="Number of top tokens to return (default: 30)"
     )
     c_stats.add_argument(
         "--min-token-len", 
         type=int, 
         default=2, 
-        help="Min token length (default: 2)"
+        help="Minimum token length (default: 2)"
     )
     c_stats.add_argument(
         "--keep-numeric", 
         action="store_true", 
-        help="Do not drop numeric tokens"
+        help="Keep numeric tokens"
     )
     c_stats.add_argument(
         "--no-lowercase", 
         action="store_true", 
-        help="Do not lowercase before tokenization"
+        help="Disable lowercasing before tokenization"
     )
     c_stats.add_argument(
         "--keep-stopwords", 
         action="store_true", 
-        help="Do not drop stopwords"
+        help="Keep stopwords"
     )
     c_stats.add_argument(
         "--lang", 
@@ -486,14 +487,15 @@ def build_parser() -> argparse.ArgumentParser:
     c_stats.add_argument(
         "--stemming-mode",
         default="none", 
-        help="Normalize words so related forms (-ing, -ed, -s) collapse into one base form (default: none)\nCurrent supported mods: stem_en"
+        help="Normalize words (e.g., -ing, -ed, -s → base form). Supported: stem_en"
     )
     c_stats.set_defaults(func=run_channel_stats)
+
 
     # TFIDF-CHANNEL
     tfidf_channel = subparser.add_parser(
         "tfidf-channel", 
-        help="Compute TF-IDF from channel Silver files"
+        help="Compute TF-IDF keywords for a channel from Silver data"
     )
     tfidf_channel.add_argument(
         "channelId", 
@@ -507,46 +509,46 @@ def build_parser() -> argparse.ArgumentParser:
     tfidf_channel.add_argument(
         "--silver-dir", 
         default="data/silver", 
-        help="Silver output directory (default: 'data/silver)"
+        help="Silver data directory (default: data/silver)"
     )
     tfidf_channel.add_argument(
         "--top-k", 
         type=int, 
         default=30, 
-        help="Top K keywords (default: 30)"
+        help="Number of top keywords to return (default: 30)"
     )
     tfidf_channel.add_argument(
         "--min-token-len", 
         type=int, 
         default=2, 
-        help="Min token length (default: 2)"
+        help="Minimum token length (default: 2)"
     )
     tfidf_channel.add_argument(
         "--min-df", 
         type=int, 
         default=2, 
-        help="Min token df, i.e., in how many documents token must appear (default: 2)"
+        help="Minimum document frequency (number of documents a token must appear in)"
     )
     tfidf_channel.add_argument(
         "--max-df", 
         type=float, 
         default=0.9, 
-        help="Max token df fraction, i.e., drop tokens appearing in more documents in percents (default: 0.9)"
+        help="Maximum document frequency (fraction of documents; tokens above are dropped)"
     )
     tfidf_channel.add_argument(
         "--keep-numeric", 
         action="store_true", 
-        help="Do not drop numeric tokens"
+        help="Keep numeric tokens"
     )
     tfidf_channel.add_argument(
         "--no-lowercase", 
         action="store_true", 
-        help="Do not lowercase before tokenization"
+        help="Disable lowercasing before tokenization"
     )
     tfidf_channel.add_argument(
         "--keep-stopwords", 
         action="store_true", 
-        help="Do not drop stopwords"
+        help="Keep stopwords"
     )
     tfidf_channel.add_argument(
         "--lang", 
@@ -563,41 +565,42 @@ def build_parser() -> argparse.ArgumentParser:
         "--ngram-min", 
         type=int, 
         default=1, 
-        help="Min ngram to be extracted (default: 1)"
+        help="Minimum n-gram size (default: 1)"
     )
     tfidf_channel.add_argument(
         "--ngram-max", 
         type=int, 
         default=1, 
-        help="Max ngram to be extracted (default: 1 - meaning extraction of unigrams only)"
+        help="Maximum n-gram size (default: 1, i.e. unigrams only)"
     )
     tfidf_channel.add_argument(
         "--min-ngram-df", 
         type=int, 
         default=2, 
-        help="Min df of ngram, i.e., in how many documents ngram must appear (default: 2)"
+        help="Minimum document frequency for n-grams (default: 2)"
     )
     tfidf_channel.add_argument(
         "--use-corpus",
         action="store_true",
-        help="Use global corpus across all silver comments (default: False)"
+        help="Use a global corpus for IDF calculation"
     )
     tfidf_channel.add_argument(
         "--keep-sentiment",
         action="store_true",
-        help="Keep sentiment words in final result (default: False)"
+        help="Keep sentiment-related tokens in the final output"
     )
     tfidf_channel.add_argument(
         "--stemming-mode",
         default="none", 
-        help="Normalize words so related forms (-ing, -ed, -s) collapse into one base form (default: none)\nCurrent supported mods: stem_en"
+        help="Normalize words (e.g., -ing, -ed, -s → base form). Supported: stem_en"
     )
     tfidf_channel.set_defaults(func=run_tfidf_channel)
-    
+
+
     # DISTINCTIVE-KEYWORDS
     distinctive_kws = subparser.add_parser(
         "distinctive-keywords", 
-        help="Compute distinctive keywords for video from channel"
+        help="Compute keywords that are distinctive for a video relative to its channel"
     )
     distinctive_kws.add_argument(
         "channelId", 
@@ -613,11 +616,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Project data directory (default: data)"
     )
     distinctive_kws.set_defaults(func=run_distinctive_keywords)
-    
+
+
     # REPORT-CHANNEL
     report_channel = subparser.add_parser(
         "report-channel", 
-        help="Print compact report from existing Gold channel artifacts"
+        help="Print a compact report based on existing Gold channel artifacts"
     )
     report_channel.add_argument(
         "channelId", 
@@ -630,13 +634,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     report_channel.add_argument(
         "--video",
-        help="Optional YouTube video URL or 11-character video ID for distinctive keywords section"
+        help="Optional video (URL or ID) to include distinctive keywords"
     )
     report_channel.add_argument(
         "--top-k", 
         type=int, 
         default=30, 
-        help="Top K keywords (default: 30)"
+        help="Number of top keywords to display (default: 30)"
     )
     report_channel.set_defaults(func=run_report_channel)
     
