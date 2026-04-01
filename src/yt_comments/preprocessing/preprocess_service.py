@@ -8,7 +8,7 @@ import pyarrow as pa
 from yt_comments.ingestion.models import Comment
 from yt_comments.preprocessing.contract import PREPROCESS_VERSION
 from yt_comments.preprocessing.text_preprocessor import TextPreprocessor
-from yt_comments.storage.protocols import BronzeCommentsReader
+from yt_comments.storage.bronze_comments_repository import JSONLCommentsRepository
 from yt_comments.storage.silver_comments_repository import ParquetSilverCommentsRepository 
 
 
@@ -36,7 +36,7 @@ class PreprocessCommentsService:
     
     def __init__(
             self,
-            bronze_repo: BronzeCommentsReader,
+            bronze_repo: JSONLCommentsRepository,
             silver_repo: ParquetSilverCommentsRepository, 
             text_preprocessor: TextPreprocessor,
     ) -> None:
