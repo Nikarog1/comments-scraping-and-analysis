@@ -8,12 +8,11 @@ import requests
 
 from yt_comments.ingestion.channel_ref_parser import ParsedChannelRef
 from yt_comments.ingestion.models import Comment, ChannelVideo, ChannelVideoDiscovery
-from yt_comments.ingestion.youtube_client import YouTubeClient
 
 
 
 @dataclass(slots=True)
-class YouTubeApiClient(YouTubeClient):
+class YouTubeApiClient:
     api_key: str
     
     def fetch_comments(self, video_id: str) -> Iterable[Comment]:

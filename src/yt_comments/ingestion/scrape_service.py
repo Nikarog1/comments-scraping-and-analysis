@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from yt_comments.ingestion.models import Comment
-from yt_comments.ingestion.youtube_client import YouTubeClient
+from yt_comments.ingestion.youtube_api_client import YouTubeApiClient
 from yt_comments.storage.bronze_comments_repository import JSONLCommentsRepository
 
 
@@ -17,7 +17,7 @@ class ScrapeResult:
     
 @dataclass(slots=True)
 class ScrapeCommentsService:
-    client: YouTubeClient
+    client: YouTubeApiClient
     repo: JSONLCommentsRepository
 
     def run(self, video_id: str, *, overwrite: bool = True, limit: int | None = None) -> ScrapeResult:
