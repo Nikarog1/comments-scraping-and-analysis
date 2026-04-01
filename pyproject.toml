@@ -4,27 +4,21 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "youtube-comments-analysis"
-version = "0.1.0"
+version = "1.0.0"
 description = "YouTube comments scraping and classical NLP analysis"
 requires-python = ">=3.11"
 dependencies = [
-    "pandas",
-    "pyarrow",
-    "numpy",
-    "scikit-learn",
-    "nltk",
-    "spacy",
-    "google-api-python-client",
-    "python-dotenv",
-    "pydantic-settings",
-    "requests",
+    "pyarrow>=14,<20",
+    "nltk>=3.8,<4",
+    "python-dotenv>=1,<2",
+    "requests>=2.31,<3",
 ]
 
 [project.optional-dependencies]
 dev = [
-  "pytest",
-  "ruff",
-  "black",
+  "pytest>=7,<9",
+  "ruff>=0.3,<1",
+  "black>=24,<26",
 ]
 
 [tool.setuptools]
