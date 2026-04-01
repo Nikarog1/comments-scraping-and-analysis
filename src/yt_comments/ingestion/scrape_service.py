@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional
 
 from yt_comments.ingestion.models import Comment
 from yt_comments.ingestion.youtube_client import YouTubeClient
@@ -21,7 +20,7 @@ class ScrapeCommentsService:
     client: YouTubeClient
     repo: JSONLCommentsRepository
 
-    def run(self, video_id: str, *, overwrite: bool = True, limit: Optional[int] = None) -> ScrapeResult:
+    def run(self, video_id: str, *, overwrite: bool = True, limit: int | None = None) -> ScrapeResult:
         comments: list[Comment] = []
         for c in self.client.fetch_comments(video_id):
             comments.append(c)

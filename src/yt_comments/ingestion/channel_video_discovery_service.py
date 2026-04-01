@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
 
 from yt_comments.ingestion.channel_video_discovery_client import ChannelVideoDiscoveryClient
 from yt_comments.ingestion.models import ChannelVideo, ChannelVideoDiscovery

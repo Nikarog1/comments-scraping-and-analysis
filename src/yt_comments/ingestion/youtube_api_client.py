@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterable, Optional
+from typing import Iterable
 
 import requests
 
@@ -24,7 +24,7 @@ class YouTubeApiClient(YouTubeClient):
         base_url = "https://www.googleapis.com/youtube/v3/commentThreads" # commentThreads returns top-level comments + metadata (2think about comments endpoint which returns replies and ind comments)        
         session = requests.Session()
         
-        page_token: Optional[str] = None
+        page_token: str | None = None
         
         while True:
             params = {
@@ -97,7 +97,7 @@ class YouTubeApiClient(YouTubeClient):
                 like_count = snippet.get("likeCount")
                 published_at_raw = snippet.get("publishedAt")
                 
-                published_at : Optional[datetime] = None
+                published_at : datetime | None = None
                 if published_at_raw:
                     published_at = datetime.fromisoformat(
                         published_at_raw.replace("Z", "+00:00") # no need to replace Z in python >v3.11 but still keep it if anyone would like to run it on older versions
@@ -133,7 +133,7 @@ class YouTubeApiClient(YouTubeClient):
         base_url = "https://www.googleapis.com/youtube/v3/search" # commentSearch returns search results, not full results    
         session = requests.Session()
         
-        page_token: Optional[str] = None
+        page_token: str | None = None
         yielded = 0
         
         while True:
@@ -212,7 +212,7 @@ class YouTubeApiClient(YouTubeClient):
                 if channel_id != request.channel_id:
                     raise ValueError("YouTube API returned different channelId")
                 
-                published_at : Optional[datetime] = None
+                published_at : datetime | None = None
                 if published_at_raw:
                     published_at = datetime.fromisoformat(
                         published_at_raw.replace("Z", "+00:00") # no need to replace Z in python >v3.11 but still keep it if anyone would like to run it on older versions

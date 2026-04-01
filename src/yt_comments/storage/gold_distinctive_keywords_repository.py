@@ -8,7 +8,7 @@ import pyarrow.parquet as pq
 
 from yt_comments.analysis.distinctive_keywords.models import DistinctiveKeyword, DistinctiveKeywords
 from yt_comments.analysis.distinctive_keywords.paths import channel_distinctive_keywords_path
-from yt_comments.analysis.tfidf.models import TfidfConfig, TfidfKeyword
+from yt_comments.analysis.tfidf.models import TfidfConfig
 
 
 

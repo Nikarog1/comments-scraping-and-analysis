@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Iterable, Optional, Protocol
+from typing import Iterable, Protocol
 
 from yt_comments.ingestion.models import Comment
 
@@ -21,7 +21,7 @@ class StubYouTubeClient:
     Temporary client for testing and / or if API key isn't provided
     """
 
-    fixed_now: Optional[datetime] = None
+    fixed_now: datetime | None = None
 
     def fetch_comments(self, video_id: str) -> Iterable[Comment]:
         now = self.fixed_now or datetime.now(timezone.utc)
