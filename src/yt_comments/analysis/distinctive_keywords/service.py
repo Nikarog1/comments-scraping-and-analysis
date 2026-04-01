@@ -13,6 +13,20 @@ class DistinctiveKeywordsService:
         channel_tfidf: ChannelTfidfKeywords,
         created_at_utc: datetime | None = None,
     ) -> DistinctiveKeywords:
+        """
+        Compare video-level TF-IDF scores against channel-level scores and rank distinctive terms.
+
+        Requires both inputs to be aligned on artifact version, preprocess version,
+        and configuration so the comparison stays meaningful.
+
+        Args:
+            video_tfidf: TF-IDF artifact for a single video.
+            channel_tfidf: TF-IDF artifact aggregated at channel level.
+            created_at_utc: Timestamp for the artifact (defaults to current UTC).
+
+        Returns:
+            DistinctiveKeywords artifact with per-token lift versus channel baseline.
+        """
         if video_tfidf.artifact_version != channel_tfidf.artifact_version:
             raise ValueError(
                 "Artifact version mismatch between video and channel TF-IDF: "

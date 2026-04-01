@@ -14,6 +14,9 @@ from yt_comments.storage.silver_comments_repository import ParquetSilverComments
 
 
 class ChannelTfidfService:
+    """
+    Computes channel-level TF-IDF keywords from preprocessed comment texts.
+    """
     def compute_for_channel(
         self,
         *,
@@ -26,6 +29,25 @@ class ChannelTfidfService:
         unfilter_sentiment: bool = True,
         batch_size: int = 5000,
     ) -> ChannelTfidfKeywords:
+        """
+        Compute TF-IDF keywords across all comments for the given channel videos.
+
+        Uses local channel comments for term frequency and, when provided, a global
+        corpus for document frequency and IDF calculation.
+
+        Args:
+            channel_id: Target channel identifier.
+            video_ids: Ordered collection of video identifiers.
+            config: Feature extraction and TF-IDF settings.
+            silver_repo: Repository used to access Silver parquet data.
+            global_corpus: Optional corpus-level document frequency table for global IDF.
+            created_at_utc: Timestamp for the artifact (defaults to current UTC).
+            unfilter_sentiment: Whether to apply keyword post-filtering.
+            batch_size: Number of rows to process per batch.
+
+        Returns:
+            ChannelTfidfKeywords artifact with scored keywords and metadata.
+        """
         
         preprocess_version = resolve_preprocess_versions(video_ids=video_ids, silver_repo=silver_repo)
         config_hash = hash_config(

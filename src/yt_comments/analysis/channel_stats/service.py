@@ -13,8 +13,9 @@ from yt_comments.storage.silver_comments_repository import ParquetSilverComments
 
 
 class ChannelTokenStatsService:
-    def __init__(self) -> None: # no need to have empty __init__ here, python anyways automatically create it
-        pass
+    """
+    Aggregates token-level statistics across multiple videos for a given channel.
+    """
     
     def compute_for_channel(
             self,
@@ -26,6 +27,23 @@ class ChannelTokenStatsService:
             created_at_utc: Optional[datetime] = None,
             batch_size: int = 5000
     ) -> ChannelTokenStats:
+        """
+        Compute aggregated token statistics for a set of videos belonging to a channel.
+
+        Streams cleaned texts from the Silver layer, applies tokenization, and
+        accumulates frequency-based metrics across all provided videos.
+
+        Args:
+            channel_id: Target channel identifier.
+            video_ids: Ordered collection of video identifiers.
+            silver_repo: Repository used to access Silver parquet data.
+            config: Tokenization and aggregation settings.
+            created_at_utc: Timestamp for the artifact (defaults to current UTC).
+            batch_size: Number of rows to process per batch.
+
+        Returns:
+            ChannelTokenStats artifact with aggregated counts and top tokens.
+        """
         if not video_ids:
             raise ValueError("video_ids must not be empty")
 

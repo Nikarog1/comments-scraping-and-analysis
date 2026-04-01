@@ -11,16 +11,27 @@ from yt_comments.analysis.tfidf.models import TfidfConfig
 
 class CorpusService:
     """
-    Gold v3 TF-IDF corpus service (per all silver videos).
-
-    Creates corpus df table per token across all videos.
-    Df for token is calculated ONCE per video no matter how many times it occured there
+    Builds corpus-level document frequency statistics across all Silver videos.
     """
     def __init__(self, *, data_root: Path, artifact_version: str = CORPUS_ARTIFACT_VERSION) -> None:
         self._data_root = data_root
         self._artifact_version = artifact_version
         
     def build(self, *, config: TfidfConfig, batch_size: int = 5000) -> CorpusDfTable:
+        """
+        Build a corpus document-frequency table from all available Silver video datasets.
+
+        Counts each feature at most once per video to produce corpus-level DF values
+        suitable for global TF-IDF scoring.
+
+        Args:
+            config: Feature extraction settings used to build corpus terms.
+            batch_size: Number of rows to read per parquet batch.
+
+        Returns:
+            CorpusDfTable artifact with per-feature video frequencies.
+        """
+        
         silver_root = self._data_root / "silver"
         if not silver_root.exists():
             raise FileNotFoundError("Silver layer not found: no preprocessed comments available.")

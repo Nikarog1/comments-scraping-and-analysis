@@ -11,8 +11,7 @@ from yt_comments.analysis.basic_stats.models import BasicStats, BasicStatsConfig
 
 
 class BasicStatsService:
-    def __init__(self) -> None:
-        pass
+    """Computes basic token-level statistics from preprocessed (Silver) comment data."""
         
     def compute_for_video(
             self,
@@ -23,6 +22,23 @@ class BasicStatsService:
             created_at_utc: Optional[datetime] = None,
             batch_size: int = 5000
     ) -> BasicStats:
+        """
+        Compute basic descriptive statistics for a single video.
+
+        Processes Silver parquet in batches, tokenizes text according to the provided
+        config, and aggregates frequency-based metrics.
+
+        Args:
+            video_id: Target video identifier.
+            silver_parquet_path: Path to Silver parquet file with cleaned texts.
+            config: Tokenization and aggregation settings.
+            created_at_utc: Timestamp for the artifact (defaults to current UTC).
+            batch_size: Number of rows to process per batch.
+
+        Returns:
+            BasicStats artifact with counts and top tokens.
+        """
+        
         preprocess_version = read_preprocess_version(silver_parquet_path=silver_parquet_path)
         
         created_at_utc = created_at_utc or datetime.now(timezone.utc)

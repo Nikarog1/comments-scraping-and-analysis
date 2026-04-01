@@ -9,6 +9,11 @@ from yt_comments.analysis.tfidf.models import TfidfConfig
 
 @dataclass(frozen=True, slots=True)
 class DistinctiveKeyword:
+    """
+    Keyword distinctive to a video compared to the channel.
+
+    lift = video_score / channel_score
+    """
     token: str
     video_score: float
     channel_score: float

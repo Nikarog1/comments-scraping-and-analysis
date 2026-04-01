@@ -14,11 +14,7 @@ from yt_comments.analysis.tfidf.models import TfidfConfig, TfidfKeyword, TfidfKe
 
 class TfidfService:
     """
-    Build TF-IDF keyword artifacts for one video.
-
-    Default behavior uses the per-video corpus (v2.1).
-    If a global corpus artifact is provided, TF is still computed from the
-    target video's comments, while IDF is computed from the global corpus.
+    Computes TF-IDF keyword artifacts for a single video from Silver comment data.
     """
 
     def compute_for_video(
@@ -32,6 +28,24 @@ class TfidfService:
         unfilter_sentiment: bool = True,
         batch_size: int = 5000,
     ) -> TfidfKeywords:
+        """
+        Compute TF-IDF keywords for one video.
+
+        Uses local comment texts for term frequency and, when provided, a global
+        corpus artifact for document frequency and IDF calculation.
+
+        Args:
+            video_id: Target video identifier.
+            silver_parquet_path: Path to Silver parquet with cleaned texts.
+            config: Feature extraction and TF-IDF settings.
+            global_corpus: Optional corpus-level DF table used for global IDF.
+            created_at_utc: Timestamp for the artifact (defaults to current UTC).
+            unfilter_sentiment: Whether to apply keyword post-filtering.
+            batch_size: Number of rows to process per batch.
+
+        Returns:
+            TfidfKeywords artifact with scored terms and metadata.
+        """
         
         preprocess_version = read_preprocess_version(silver_parquet_path)
         config_hash = hash_config(
