@@ -45,6 +45,17 @@ class PreprocessCommentsService:
         self._tp = text_preprocessor
         
     def run(self, video_id: str, *, overwrite: bool = True, batch_size: int = 5000) -> str:
+        """
+        Run preprocessing for a single video and persist results to the Silver layer.
+
+        Args:
+            video_id: Target video identifier.
+            overwrite: Whether to overwrite existing Silver data.
+            batch_size: Number of rows per parquet write batch.
+
+        Returns:
+            Path to the written Silver parquet file.
+        """
         bronze_comments = self._bronze_repo.load(video_id)
         processed_at = datetime.now(timezone.utc)
         
@@ -59,10 +70,16 @@ class PreprocessCommentsService:
         
             
     def _iter_silver_rows(self, comments: Iterable[Comment], *, processed_at: datetime) -> Iterable[dict]:
+        """Yield Silver-formatted rows from raw Bronze comments."""
         for c in comments:
             yield self._comment_to_silver_row(c, processed_at=processed_at)
     
     def _comment_to_silver_row(self, c: Comment, *, processed_at: datetime) -> dict:
+        """
+        Convert a single comment into a normalized Silver-layer row.
+
+        Ensures consistent timestamp handling and applies text preprocessing.
+        """
         raw = c.text
         cleaned = self._tp.clean(raw)
         

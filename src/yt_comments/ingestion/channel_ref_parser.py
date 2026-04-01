@@ -11,10 +11,26 @@ _HANDLE_RE = re.compile(r"^@[a-zA-Z0-9._-]{3,30}$")
 
 @dataclass(frozen=True, slots=True)
 class ParsedChannelRef:
+    """Normalized representation of a user-provided YouTube channel reference."""
     kind: str # "channel_id" | "handle" | "username"
     value: str
     
 def parse_channel_ref(raw: str) -> ParsedChannelRef:
+    """
+    Parse and normalize a YouTube channel reference.
+
+    Supports direct channel IDs, @handles, and common YouTube URL formats.
+    Returns a structured representation used for downstream API resolution.
+
+    Args:
+        raw: Raw user input (ID, handle, or URL).
+
+    Returns:
+        ParsedChannelRef with normalized kind and value.
+
+    Raises:
+        ValueError: If the input is empty or cannot be parsed.
+    """
     value = raw.strip()
     if not value:
         raise ValueError("Channel reference is empty")
