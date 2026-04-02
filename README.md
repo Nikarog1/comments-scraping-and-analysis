@@ -67,20 +67,20 @@ yt_comments tfidf <video_id> --use-corpus
 **Channel videos analysis:**
 ```bash
 # Discover videos
-py -m yt_comments discover-videos <channel_id>
+yt_comments discover-videos <channel_id>
 
 # Scrape comments
-py -m yt_comments scrape-channel <channel_id>
+yt_comments scrape-channel <channel_id>
 
 # Preprocess
-py -m yt_comments preprocess-channel <channel_id>
+yt_comments preprocess-channel <channel_id>
 
 # Build analytics
-py -m yt_comments channel-stats <channel_id>
-py -m yt_comments channel-tfidf <channel_id>
+yt_comments channel-stats <channel_id>
+yt_comments channel-tfidf <channel_id>
 
 # Final report (no recomputation)
-py -m yt_comments report-channel <channel_id>
+yt_comments report-channel <channel_id>
 ```
 
 ---
