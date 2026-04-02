@@ -4,8 +4,7 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from yt_comments.analysis.features import hash_config
-from yt_comments.analysis.keyword_quality import KEYWORD_QUALITY_VERSION
+from yt_comments.analysis.features import hash_corpus_compatible_tfidf_config
 from yt_comments.analysis.corpus.models import CorpusDfTable, CorpusTokenStat
 from yt_comments.analysis.tfidf.models import TfidfConfig
 from yt_comments.analysis.tfidf.service import TfidfService
@@ -47,16 +46,10 @@ def test_tfidf_service_uses_global_corpus_idf(tmp_path: Path) -> None:
         min_ngram_df=1
     )
     
-    config_hash = hash_config(
-        {
-            "config": asdict(config),
-            "keywords_version": KEYWORD_QUALITY_VERSION
-            }   
-    )
     corpus = CorpusDfTable(
         artifact_version="corpus_v1",
         preprocess_version="v1",
-        config_hash=config_hash,
+        config_hash=hash_corpus_compatible_tfidf_config(config),
         video_count=10,
         tokens=(
             CorpusTokenStat("amazing", 7),
