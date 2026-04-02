@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-from yt_comments.analysis.features import build_document_features, hash_config, read_preprocess_version
+from yt_comments.analysis.features import build_document_features, hash_config, hash_corpus_compatible_tfidf_config, read_preprocess_version
 from yt_comments.analysis.corpus.contract import CORPUS_ARTIFACT_VERSION
 from yt_comments.analysis.corpus.models import CorpusDfTable, CorpusTokenStat
 from yt_comments.analysis.tfidf.models import TfidfConfig
@@ -84,7 +84,7 @@ class CorpusService:
         return CorpusDfTable(
             artifact_version=self._artifact_version,
             preprocess_version=preprocess_version,
-            config_hash=hash_config(config),
+            config_hash=hash_corpus_compatible_tfidf_config(config),
             video_count=video_count,
             tokens=tokens
         )

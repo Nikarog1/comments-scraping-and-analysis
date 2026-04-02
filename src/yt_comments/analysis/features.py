@@ -34,6 +34,19 @@ def hash_config(config: Any) -> str:
     ).encode("utf-8") # dicts are not hashable, so need to convert to json string
     return hashlib.sha256(payload).hexdigest()[:16]
 
+def hash_corpus_compatible_tfidf_config(config: TfidfConfig) -> str:
+    payload = {
+        "min_token_len": config.min_token_len,
+        "drop_numeric_tokens": config.drop_numeric_tokens,
+        "lowercase": config.lowercase,
+        "drop_stopwords": config.drop_stopwords,
+        "stopwords_lang": config.stopwords_lang,
+        "stopwords_hash": config.stopwords_hash,
+        "normalization": config.normalization,
+        "ngram_range": config.ngram_range,
+    }
+    return hash_config(payload)
+
 def build_document_features(text: str, config: TfidfConfig) -> list[str]:
     """
     Build the per-document feature list consumed by the accumulator.
